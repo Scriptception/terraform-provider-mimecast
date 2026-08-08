@@ -1,7 +1,6 @@
 GO ?= go
 TERRAFORM ?= terraform
 
-TFPLUGINDOCS_VERSION := v0.23.0
 GOVULNCHECK_VERSION := v1.6.0
 VERSION := $(shell tr -d '\r\n' < VERSION)
 
@@ -46,9 +45,10 @@ vet:
 vuln:
 	$(GO) run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) ./...
 	cd tools && $(GO) run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) ./...
+	cd tools && $(GO) run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs
 
 generate:
-	cd tools && $(GO) run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@$(TFPLUGINDOCS_VERSION) generate --provider-name mimecast --provider-dir ..
+	cd tools && $(GO) tool tfplugindocs generate --provider-name mimecast --provider-dir ..
 
 capability-check:
 	cd tools && $(GO) run ./capabilitycheck -manifest ../capabilities/api-v2.json -provider-root ..
