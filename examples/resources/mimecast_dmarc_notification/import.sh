@@ -1,0 +1,1 @@
+terraform import mimecast_dmarc_notification.example notification-id

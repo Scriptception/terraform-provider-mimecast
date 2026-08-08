@@ -1,0 +1,1 @@
+terraform import mimecast_threat_reporting_subscription.example subscription-id

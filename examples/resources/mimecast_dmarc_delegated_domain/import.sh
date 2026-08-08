@@ -1,0 +1,1 @@
+terraform import mimecast_dmarc_delegated_domain.example managed-domain-id

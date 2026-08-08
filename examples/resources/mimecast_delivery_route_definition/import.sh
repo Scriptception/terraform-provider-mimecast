@@ -1,0 +1,1 @@
+terraform import mimecast_delivery_route_definition.primary definition-id

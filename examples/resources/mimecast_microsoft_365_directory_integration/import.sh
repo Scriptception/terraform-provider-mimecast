@@ -1,0 +1,1 @@
+terraform import mimecast_microsoft_365_directory_integration.example integration-id

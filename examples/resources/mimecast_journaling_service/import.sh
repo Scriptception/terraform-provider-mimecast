@@ -1,0 +1,1 @@
+terraform import mimecast_journaling_service.example journaling-service-id

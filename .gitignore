@@ -1,0 +1,13 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+crash.log
+crash.*.log
+.DS_Store
+dist/
+coverage.out
+.mimecast-openapi/
+local-test/
+.local-tmp/

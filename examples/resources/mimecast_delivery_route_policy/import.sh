@@ -1,0 +1,1 @@
+terraform import mimecast_delivery_route_policy.primary policy-id

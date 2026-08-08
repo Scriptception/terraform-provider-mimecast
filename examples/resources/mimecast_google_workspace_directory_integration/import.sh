@@ -1,0 +1,1 @@
+terraform import mimecast_google_workspace_directory_integration.example integration-id

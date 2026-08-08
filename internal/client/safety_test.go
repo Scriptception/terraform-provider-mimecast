@@ -1,0 +1,244 @@
+package client
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"strings"
+	"testing"
+)
+
+func newFixtureClient(t *testing.T, handler http.HandlerFunc, config func(*Config)) (*Client, *httptest.Server) {
+	t.Helper()
+	server := httptest.NewServer(handler)
+	cfg := Config{BaseURL: server.URL, TokenURL: server.URL + "/oauth/token", ClientID: "id", ClientSecret: "secret", MaxRetries: 0}
+	if config != nil {
+		config(&cfg)
+	}
+	c, err := New(cfg)
+	if err != nil {
+		server.Close()
+		t.Fatal(err)
+	}
+	return c, server
+}
+
+func tokenFixture(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = w.Write([]byte(`{"access_token":"token","expires_in":3600}`))
+}
+
+func TestReadOnlyBlocksMutationBeforeOAuthOrAPIRequest(t *testing.T) {
+	requests := 0
+	c, server := newFixtureClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		requests++
+		http.Error(w, "unexpected", http.StatusInternalServerError)
+	}, func(cfg *Config) { cfg.ReadOnly = true })
+	defer server.Close()
+
+	err := c.Do(context.Background(), http.MethodPost, "/policy-management/cloud-gateway/v1/greylisting/policies", nil, map[string]any{"description": "test"}, nil)
+	var readOnlyErr *ReadOnlyError
+	if !errors.As(err, &readOnlyErr) {
+		t.Fatalf("error = %v, want ReadOnlyError", err)
+	}
+	if requests != 0 {
+		t.Fatalf("requests = %d, want zero", requests)
+	}
+}
+
+func TestDoReadRejectsNonAllowlistedPOSTBeforeOAuthOrAPIRequest(t *testing.T) {
+	requests := 0
+	c, server := newFixtureClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		requests++
+		http.Error(w, "unexpected", http.StatusInternalServerError)
+	}, func(cfg *Config) { cfg.ReadOnly = true })
+	defer server.Close()
+
+	err := c.DoRead(context.Background(), http.MethodPost, "/api/policy/example/create-policy", nil, map[string]any{}, nil)
+	if err == nil || !strings.Contains(err.Error(), "not an allowlisted legacy read operation") {
+		t.Fatalf("DoRead() error = %v, want allowlist rejection", err)
+	}
+	if requests != 0 {
+		t.Fatalf("requests = %d, want zero", requests)
+	}
+}
+
+func TestNonIdempotentWriteIsNeverRetried(t *testing.T) {
+	attempts := 0
+	c, server := newFixtureClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/oauth/token" {
+			tokenFixture(w)
+			return
+		}
+		attempts++
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte(`{"errors":[{"code":"rate_limited","message":"not exposed"}]}`))
+	}, func(cfg *Config) { cfg.MaxRetries = 4 })
+	defer server.Close()
+
+	err := c.Do(context.Background(), http.MethodPost, "/write", nil, map[string]any{"value": true}, nil)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if attempts != 1 {
+		t.Fatalf("attempts = %d, want one", attempts)
+	}
+}
+
+func TestTokenURLDefaultsToResolvedBaseURL(t *testing.T) {
+	tokenRequests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/oauth/token" {
+			tokenRequests++
+			tokenFixture(w)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"type": "account"})
+	}))
+	defer server.Close()
+	c, err := New(Config{BaseURL: server.URL, ClientID: "id", ClientSecret: "secret"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out map[string]any
+	if err := c.Do(context.Background(), http.MethodGet, "/identity/whoami", nil, nil, &out); err != nil {
+		t.Fatal(err)
+	}
+	if tokenRequests != 1 {
+		t.Fatalf("tokenRequests = %d, want one", tokenRequests)
+	}
+}
+
+func TestProxyRoutesOAuthAndAPIWithoutLeakingProxyOrBody(t *testing.T) {
+	paths := make([]string, 0, 2)
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		paths = append(paths, r.URL.Path)
+		if r.URL.Path == "/oauth/token" {
+			tokenFixture(w)
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`tenant-secret-body`))
+	}))
+	defer proxy.Close()
+	proxyURL, err := url.Parse(proxy.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	proxyURL.User = url.UserPassword("proxy-user", "proxy-secret")
+	c, err := New(Config{BaseURL: "http://mimecast.invalid", ClientID: "id", ClientSecret: "secret", ProxyURL: proxyURL.String(), MaxRetries: 0})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out map[string]any
+	err = c.Do(context.Background(), http.MethodGet, "/identity/whoami", nil, nil, &out)
+	if err == nil {
+		t.Fatal("expected API error")
+	}
+	for _, forbidden := range []string{"proxy-secret", "proxy-user", "tenant-secret-body", proxyURL.String()} {
+		if strings.Contains(err.Error(), forbidden) {
+			t.Fatalf("error leaked %q: %v", forbidden, err)
+		}
+	}
+	if len(paths) != 2 || paths[0] != "/oauth/token" || paths[1] != "/identity/whoami" {
+		t.Fatalf("proxy paths = %#v", paths)
+	}
+}
+
+func TestManagedURLTokenPagination(t *testing.T) {
+	apiRequests := 0
+	c, server := newFixtureClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/oauth/token" {
+			tokenFixture(w)
+			return
+		}
+		apiRequests++
+		var body struct {
+			Meta struct {
+				Pagination struct {
+					PageToken string `json:"pageToken"`
+				} `json:"pagination"`
+			} `json:"meta"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		if apiRequests == 1 {
+			if body.Meta.Pagination.PageToken != "" {
+				t.Fatalf("first page token = %q", body.Meta.Pagination.PageToken)
+			}
+			_, _ = w.Write([]byte(`{"data":[{"id":"b","url":"b.invalid"}],"meta":{"pagination":{"next":"next-token"}}}`))
+			return
+		}
+		if body.Meta.Pagination.PageToken != "next-token" {
+			t.Fatalf("second page token = %q", body.Meta.Pagination.PageToken)
+		}
+		_, _ = w.Write([]byte(`{"data":[{"id":"a","url":"a.invalid"}],"meta":{"pagination":{}}}`))
+	}, nil)
+	defer server.Close()
+
+	items, err := c.ListManagedURLs(context.Background(), "", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if apiRequests != 2 || len(items) != 2 || items[0].ID != "a" || items[1].ID != "b" {
+		t.Fatalf("requests=%d items=%#v", apiRequests, items)
+	}
+}
+
+func TestAntiSpoofPolicyListAcceptsDocumentedAndObservedWrappers(t *testing.T) {
+	for _, fixture := range []struct {
+		name string
+		body string
+	}{
+		{name: "documented definitions", body: `{"definitions":[{"id":"documented"}]}`},
+		{name: "observed policies", body: `{"policies":[{"id":"observed"}]}`},
+	} {
+		t.Run(fixture.name, func(t *testing.T) {
+			c, server := newFixtureClient(t, func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/oauth/token" {
+					tokenFixture(w)
+					return
+				}
+				_, _ = w.Write([]byte(fixture.body))
+			}, nil)
+			defer server.Close()
+			items, err := c.ListPolicies(context.Background(), "anti_spoofing")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(items) != 1 || items[0].ID == "" {
+				t.Fatalf("items = %#v", items)
+			}
+		})
+	}
+}
+
+func TestPolicyWriteUsesDirectGroupID(t *testing.T) {
+	c, server := newFixtureClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/oauth/token" {
+			tokenFixture(w)
+			return
+		}
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		from := body["from"].(map[string]any)
+		if from["groupId"] != "group-id" {
+			t.Fatalf("from.groupId = %#v", from["groupId"])
+		}
+		if _, exists := from["group"]; exists {
+			t.Fatalf("unexpected nested group in write body: %#v", from)
+		}
+		_, _ = w.Write([]byte(`{"policyId":"policy-id"}`))
+	}, nil)
+	defer server.Close()
+	_, err := c.CreatePolicy(context.Background(), "greylisting", Policy{Description: "test", From: PolicyTarget{Type: "profile_group", GroupID: "group-id"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+}

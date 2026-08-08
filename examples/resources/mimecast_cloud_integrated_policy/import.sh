@@ -1,0 +1,1 @@
+terraform import mimecast_cloud_integrated_policy.example policy-id

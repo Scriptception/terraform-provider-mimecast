@@ -1,0 +1,1 @@
+terraform import mimecast_address_alteration_definition.example definition-id

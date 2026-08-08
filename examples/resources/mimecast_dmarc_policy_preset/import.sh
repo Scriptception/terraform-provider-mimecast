@@ -1,0 +1,1 @@
+terraform import mimecast_dmarc_policy_preset.example policy-preset-id

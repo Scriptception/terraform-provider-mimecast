@@ -1,0 +1,1 @@
+terraform import mimecast_blocked_sender_policy.example policy-id

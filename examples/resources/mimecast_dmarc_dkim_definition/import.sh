@@ -1,0 +1,1 @@
+terraform import mimecast_dmarc_dkim_definition.example delegated-domain-id/selector

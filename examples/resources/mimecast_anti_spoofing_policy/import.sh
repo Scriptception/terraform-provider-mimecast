@@ -1,0 +1,1 @@
+terraform import mimecast_anti_spoofing_policy.example policy-id

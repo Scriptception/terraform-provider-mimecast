@@ -1,0 +1,1 @@
+terraform import mimecast_dmarc_domain_group.example domain-group-id

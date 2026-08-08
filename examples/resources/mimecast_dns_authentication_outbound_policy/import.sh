@@ -1,0 +1,1 @@
+terraform import mimecast_dns_authentication_outbound_policy.example policy-id

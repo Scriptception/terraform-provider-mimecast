@@ -1,0 +1,1 @@
+terraform import mimecast_active_directory_integration.example integration-id
