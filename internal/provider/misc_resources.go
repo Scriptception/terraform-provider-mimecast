@@ -242,6 +242,7 @@ func (r *profileGroupMemberResource) readMember(ctx context.Context, state *prof
 	for _, item := range items {
 		if emailIdentity != "" && strings.EqualFold(item.EmailAddress, emailIdentity) {
 			state.Domain = types.StringNull()
+			state.Note = stringValue(item.Note)
 			state.Name = stringValue(item.Name)
 			state.Type = stringValue(item.Type)
 			state.Internal = boolValue(item.Internal)
@@ -249,6 +250,7 @@ func (r *profileGroupMemberResource) readMember(ctx context.Context, state *prof
 		}
 		if domainIdentity != "" && strings.EqualFold(item.Domain, domainIdentity) {
 			state.EmailAddress = types.StringNull()
+			state.Note = stringValue(item.Note)
 			state.Name = stringValue(item.Name)
 			state.Type = stringValue(item.Type)
 			state.Internal = boolValue(item.Internal)
