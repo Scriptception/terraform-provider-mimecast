@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -179,14 +180,15 @@ func TestAddressAlterationInventoriesDiscoverIDsAndSort(t *testing.T) {
 				_, _ = w.Write([]byte(`{"data":[{"items":[]}]}`))
 			}
 		case addressAlterationGetPolicy:
-			var request struct {
-				Data []map[string]any `json:"data"`
+			if r.Header.Get("Content-Type") != "" {
+				t.Fatalf("policy inventory Content-Type = %q, want empty", r.Header.Get("Content-Type"))
 			}
-			if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
 				t.Fatal(err)
 			}
-			if len(request.Data) != 1 || len(request.Data[0]) != 0 {
-				t.Fatalf("policy inventory must omit id: %#v", request.Data)
+			if len(body) != 0 {
+				t.Fatalf("policy inventory request body length = %d, want 0", len(body))
 			}
 			_, _ = w.Write([]byte(`{"data":[{"id":"policy-b","addressAlterationSetId":"set-b","policy":{"description":"B","from":{"type":"everyone"},"to":{"type":"everyone"}}},{"id":"policy-a","addressAlterationSetId":"set-a","policy":{"description":"A","from":{"type":"everyone"},"to":{"type":"everyone"}}}]}`))
 		default:
@@ -308,7 +310,7 @@ func TestAddressAlterationPolicyLifecycleAndDirectGroupID(t *testing.T) {
 		case addressAlterationGetPolicy:
 			gets++
 			assertLegacyIDRequest(t, r, "policy-1")
-			_, _ = w.Write([]byte(`{"data":[{"id":"policy-1","addressAlterationSetId":"set-1","policy":{"description":"rewrite","from":{"type":"profile_group","group":{"id":"group-1"}},"to":{"type":"everyone"},"conditions":{"sourceIPs":["10.1.0.0/16","10.0.0.0/8"]}}}]}`))
+			_, _ = w.Write([]byte(`{"data":[{"id":"rotated-secure-id","addressAlterationSetId":"set-1","policy":{"description":"rewrite","from":{"type":"profile_group","group":{"id":"group-1"}},"to":{"type":"everyone"},"conditions":{"sourceIPs":["10.1.0.0/16","10.0.0.0/8"]}}}]}`))
 		case addressAlterationUpdatePolicy:
 			assertLegacyPolicyWrite(t, r, true)
 			_, _ = w.Write([]byte(`{"data":[{"id":"policy-1"}]}`))
@@ -330,6 +332,9 @@ func TestAddressAlterationPolicyLifecycleAndDirectGroupID(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if read.ID != id {
+		t.Fatalf("read ID = %q, want requested ID %q", read.ID, id)
+	}
 	if read.Policy.From.ResolvedGroupID() != "group-1" || read.Policy.Conditions == nil || strings.Join(read.Policy.Conditions.SourceIPs, ",") != "10.0.0.0/8,10.1.0.0/16" {
 		t.Fatalf("read policy = %#v", read)
 	}
@@ -344,6 +349,41 @@ func TestAddressAlterationPolicyLifecycleAndDirectGroupID(t *testing.T) {
 	}
 	if err := c.DeleteAddressAlterationPolicy(context.Background(), id); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestAddressAlterationPolicyReadRejectsMissingAndAmbiguousResults(t *testing.T) {
+	tests := []struct {
+		name        string
+		response    string
+		wantMissing bool
+	}{
+		{name: "missing", response: `{"data":[]}`, wantMissing: true},
+		{name: "ambiguous", response: `{"data":[{"id":"response-a"},{"id":"response-b"}]}`},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c, server := newFixtureClient(t, func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/oauth/token" {
+					tokenFixture(w)
+					return
+				}
+				if r.Method != http.MethodPost || r.URL.Path != addressAlterationGetPolicy {
+					t.Fatalf("unexpected request %s %s", r.Method, r.URL.Path)
+				}
+				assertLegacyIDRequest(t, r, "requested-policy-id")
+				_, _ = w.Write([]byte(test.response))
+			}, nil)
+			defer server.Close()
+
+			_, err := c.GetAddressAlterationPolicy(context.Background(), "requested-policy-id")
+			if err == nil {
+				t.Fatal("GetAddressAlterationPolicy returned no error")
+			}
+			if IsNotFound(err) != test.wantMissing {
+				t.Fatalf("IsNotFound(error) = %t, want %t", IsNotFound(err), test.wantMissing)
+			}
+		})
 	}
 }
 

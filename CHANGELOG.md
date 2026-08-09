@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.2.7 - 2026-08-10
+
+- Preserved the requested Address Alteration policy identity when Mimecast
+  returns a different secure ID during filtered reads.
+- Corrected Address Alteration policy inventory reads to omit the optional
+  request body.
+
 ## 0.2.6 - 2026-08-09
 
 - Prevented managed URLs whose decoded query parameter name is `access_token`
