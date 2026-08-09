@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.2.6 - 2026-08-09
+
+- Prevented managed URLs whose decoded query parameter name is `access_token`
+  from entering Terraform configuration or state. Resource validation,
+  lifecycle reads, and import now fail with value-free diagnostics, while the
+  managed URL data source excludes the whole record and reports the exclusion
+  count.
+
 ## 0.2.5 - 2026-08-09
 
 - Fixed ID-only imports for Address Alteration policies by hydrating the

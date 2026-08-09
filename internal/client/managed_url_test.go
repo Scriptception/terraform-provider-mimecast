@@ -107,6 +107,39 @@ func TestManagedURLCanonicalizationLeavesInvalidResponseShapesUnset(t *testing.T
 	}
 }
 
+func TestManagedURLAccessTokenQueryDetection(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		item ManagedURL
+		want bool
+	}{
+		{name: "plain composite", item: ManagedURL{URL: "https://example.invalid/path?access_token=marker"}, want: true},
+		{name: "encoded composite name", item: ManagedURL{URL: "https://example.invalid/path?%61ccess%5Ftoken=marker"}, want: true},
+		{name: "case insensitive composite", item: ManagedURL{URL: "https://example.invalid/path?ACCESS_TOKEN=marker"}, want: true},
+		{name: "valueless parameter", item: ManagedURL{URL: "https://example.invalid/path?access_token"}, want: true},
+		{name: "duplicate parameter", item: ManagedURL{URL: "https://example.invalid/path?safe=true&access_token=first&access_token=second"}, want: true},
+		{name: "malformed composite URL", item: ManagedURL{URL: "://%zz?%61ccess_token=marker"}, want: true},
+		{name: "decomposed query", item: ManagedURL{QueryString: "safe=true&access_token=marker"}, want: true},
+		{name: "prefixed decomposed query", item: ManagedURL{QueryString: "?%61CCESS%5ftoken=marker"}, want: true},
+		{name: "value only", item: ManagedURL{URL: "https://example.invalid/path?return=access_token%3Dmarker"}},
+		{name: "prefixed name", item: ManagedURL{URL: "https://example.invalid/path?my_access_token=marker"}},
+		{name: "fragment only", item: ManagedURL{URL: "https://example.invalid/path#access_token=marker"}},
+		{name: "query inside fragment", item: ManagedURL{URL: "https://example.invalid/path#fragment?access_token=marker"}},
+		{name: "path only", item: ManagedURL{URL: "https://example.invalid/access_token=marker"}},
+		{name: "safe query", item: ManagedURL{URL: "https://example.invalid/path?token=marker"}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := ManagedURLHasAccessTokenQuery(test.item); got != test.want {
+				t.Fatalf("detection = %v, want %v", got, test.want)
+			}
+		})
+	}
+}
+
 func TestCreateManagedURLOmitsResponseOnlyFields(t *testing.T) {
 	t.Parallel()
 

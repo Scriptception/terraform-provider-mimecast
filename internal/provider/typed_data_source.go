@@ -541,26 +541,39 @@ func NewDNSAuthenticationOutboundDefinitionsDataSource() datasource.DataSource {
 }
 
 type managedURLsModel struct {
-	ID    types.String      `tfsdk:"id"`
-	Items []managedURLModel `tfsdk:"items"`
+	ID                       types.String      `tfsdk:"id"`
+	Items                    []managedURLModel `tfsdk:"items"`
+	ExcludedAccessTokenCount types.Int64       `tfsdk:"excluded_access_token_count"`
 }
 
 func NewManagedURLsDataSource() datasource.DataSource {
 	itemAttrs := map[string]dsschema.Attribute{"id": dsID("Managed URL ID."), "url": dsString("Managed URL or domain."), "action": dsString("Block or permit action."), "match_type": dsString("Explicit or domain match."), "comment": dsString("Tracking comment."), "disable_log_click": dsBool("Whether click logging is disabled."), "disable_rewrite": dsBool("Whether URL rewriting is disabled."), "disable_user_awareness": dsBool("Whether awareness challenges are disabled.")}
-	attrs := map[string]dsschema.Attribute{"id": dsID("Stable inventory ID."), "items": dsItems(itemAttrs)}
-	return newTypedDataSource("managed_urls", "Read all Targeted Threat Protection managed URLs with token pagination and ID-stable ordering.", attrs, func(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse, c *client.Client) {
+	attrs := map[string]dsschema.Attribute{
+		"id":                          dsID("Stable inventory ID."),
+		"items":                       dsItems(itemAttrs),
+		"excluded_access_token_count": dsInt64("Number of whole managed URL records excluded because their decoded query parameter name is access_token."),
+	}
+	return newTypedDataSource("managed_urls", "Read supported Targeted Threat Protection managed URLs with token pagination and ID-stable ordering. Records whose decoded query parameter name is access_token are excluded before state mapping and counted separately.", attrs, func(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse, c *client.Client) {
 		out, err := c.ListManagedURLs(ctx, "", false)
 		if err != nil {
 			resp.Diagnostics.AddError("Unable to read managed URLs", err.Error())
 			return
 		}
 		items := make([]managedURLModel, 0, len(out))
+		var excluded int64
 		for _, item := range out {
+			if client.ManagedURLHasAccessTokenQuery(item) {
+				excluded++
+				continue
+			}
 			model := managedURLModel{}
-			model.fromAPI(item)
+			if !model.fromAPI(item) {
+				excluded++
+				continue
+			}
 			items = append(items, model)
 		}
-		resp.Diagnostics.Append(resp.State.Set(ctx, &managedURLsModel{ID: types.StringValue("managed_urls"), Items: items})...)
+		resp.Diagnostics.Append(resp.State.Set(ctx, &managedURLsModel{ID: types.StringValue("managed_urls"), Items: items, ExcludedAccessTokenCount: types.Int64Value(excluded)})...)
 	})
 }
 

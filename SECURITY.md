@@ -20,6 +20,10 @@ redacted configuration. Do not attach real state or tenant responses.
   arguments where a safe lifecycle exists.
 - API errors and diagnostics must not include credentials, authentication
   headers, request bodies, or unbounded response content.
+- Managed URL records whose decoded query parameter name is `access_token` are
+  refused by resource configuration, read, and import paths with value-free
+  diagnostics. The managed URL data source excludes the whole record before
+  state mapping and reports only an exclusion count.
 - `insecure = true` disables TLS certificate verification and must not be used
   outside isolated testing.
 - Terraform state can contain identifiers and managed configuration. Protect it
