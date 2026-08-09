@@ -497,10 +497,7 @@ func NewDeliveryRouteDefinitionsDataSource() datasource.DataSource {
 		}
 		items := make([]deliveryRouteDefinitionItemModel, 0, len(out))
 		for _, item := range out {
-			mechs, username, domain := item.AuthMechanisms, item.Username, item.Domain
-			if item.SMTPAuth != nil {
-				mechs, username, domain = item.SMTPAuth.AuthMechanisms, item.SMTPAuth.Username, item.SMTPAuth.Domain
-			}
+			mechs, username, domain := deliveryRouteAuthenticationFromAPI(item)
 			list, diags := listFromStrings(ctx, mechs)
 			resp.Diagnostics.Append(diags...)
 			items = append(items, deliveryRouteDefinitionItemModel{ID: stringValue(item.ID), Description: stringValue(item.Description), Hostname: stringValue(item.Hostname), Port: types.Int64Value(item.Port), AlternateRouteID: stringValue(item.AlternateRouteID), AuthMechanisms: list, Username: stringValue(username), Domain: stringValue(domain)})
