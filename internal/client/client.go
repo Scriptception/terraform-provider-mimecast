@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -63,6 +64,18 @@ type Client struct {
 	tokenExpiry time.Time
 }
 
+type serviceTransport struct {
+	base              http.RoundTripper
+	allowLoopbackHTTP bool
+}
+
+func (t serviceTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	if request.URL.Scheme != "https" && (request.URL.Scheme != "http" || !t.allowLoopbackHTTP || !isLoopbackHost(request.URL.Hostname())) {
+		return nil, errors.New("mimecast: blocked non-HTTPS request to a non-loopback service endpoint")
+	}
+	return t.base.RoundTrip(request)
+}
+
 // ReadOnlyError is returned before a mutating request is built or sent when
 // the provider's fail-closed read-only mode is enabled.
 type ReadOnlyError struct {
@@ -112,19 +125,17 @@ func IsNotFound(err error) bool {
 // New returns a configured client.
 func New(cfg Config) (*Client, error) {
 	base := firstNonEmpty(cfg.BaseURL, DefaultBaseURL)
-	u, err := url.Parse(strings.TrimRight(base, "/"))
+	u, err := parseServiceURL(strings.TrimRight(base, "/"), "base_url")
 	if err != nil {
-		return nil, fmt.Errorf("mimecast: invalid base_url: %w", err)
-	}
-	if u.Scheme == "" || u.Host == "" {
-		return nil, fmt.Errorf("mimecast: base_url must include scheme and host, got %q", base)
+		return nil, err
 	}
 	tokenURL := strings.TrimSpace(cfg.TokenURL)
 	if tokenURL == "" {
 		tokenURL = strings.TrimRight(base, "/") + "/oauth/token"
 	}
-	if _, err := url.Parse(tokenURL); err != nil {
-		return nil, fmt.Errorf("mimecast: invalid token_url: %w", err)
+	tokenEndpoint, err := parseServiceURL(tokenURL, "token_url")
+	if err != nil {
+		return nil, err
 	}
 	if cfg.ClientID == "" {
 		return nil, errors.New("mimecast: client_id is required")
@@ -153,12 +164,17 @@ func New(cfg Config) (*Client, error) {
 		return nil, fmt.Errorf("mimecast: token_auth_method must be client_secret_post or client_secret_basic")
 	}
 	transport := http.DefaultTransport.(*http.Transport).Clone()
+	var proxyURL *url.URL
 	if strings.TrimSpace(cfg.ProxyURL) != "" {
-		proxyURL, err := url.Parse(strings.TrimSpace(cfg.ProxyURL))
-		if err != nil || proxyURL.Scheme == "" || proxyURL.Host == "" {
+		proxyURL, err = url.Parse(strings.TrimSpace(cfg.ProxyURL))
+		if err != nil || proxyURL.Host == "" || proxyURL.Scheme != "http" && proxyURL.Scheme != "https" {
 			return nil, fmt.Errorf("mimecast: proxy_url must include a valid scheme and host")
 		}
 		transport.Proxy = http.ProxyURL(proxyURL)
+	}
+	allowLoopbackHTTP := proxyURL == nil || isLoopbackHost(proxyURL.Hostname())
+	if !allowLoopbackHTTP && (u.Scheme == "http" || tokenEndpoint.Scheme == "http") {
+		return nil, errors.New("mimecast: loopback HTTP service endpoints cannot use a non-loopback proxy")
 	}
 	if cfg.Insecure {
 		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} // #nosec G402 -- explicit provider opt-in
@@ -166,9 +182,37 @@ func New(cfg Config) (*Client, error) {
 	ua := firstNonEmpty(cfg.UserAgent, "terraform-provider-mimecast")
 	return &Client{
 		baseURL: u, tokenURL: tokenURL, clientID: cfg.ClientID, clientSecret: cfg.ClientSecret, tokenAuthMethod: authMethod,
-		scopes: cfg.Scopes, httpClient: &http.Client{Timeout: timeout, Transport: transport}, userAgent: ua, maxRetries: retries, pageSize: pageSize,
+		scopes: cfg.Scopes, httpClient: &http.Client{Timeout: timeout, Transport: serviceTransport{base: transport, allowLoopbackHTTP: allowLoopbackHTTP}}, userAgent: ua, maxRetries: retries, pageSize: pageSize,
 		readOnly: cfg.ReadOnly,
 	}, nil
+}
+
+// IsAllowedServiceURL reports whether a Mimecast API or OAuth endpoint uses
+// HTTPS, or HTTP on a numeric loopback address for local tests.
+func IsAllowedServiceURL(value string) bool {
+	_, err := parseServiceURL(value, "service URL")
+	return err == nil
+}
+
+func parseServiceURL(value, name string) (*url.URL, error) {
+	parsed, err := url.Parse(strings.TrimSpace(value))
+	if err != nil || parsed.Host == "" {
+		return nil, fmt.Errorf("mimecast: %s must be an absolute HTTPS URL; HTTP is allowed only on numeric loopback addresses for testing", name)
+	}
+	switch parsed.Scheme {
+	case "https":
+		return parsed, nil
+	case "http":
+		if isLoopbackHost(parsed.Hostname()) {
+			return parsed, nil
+		}
+	}
+	return nil, fmt.Errorf("mimecast: %s must be an absolute HTTPS URL; HTTP is allowed only on numeric loopback addresses for testing", name)
+}
+
+func isLoopbackHost(host string) bool {
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 type tokenResponse struct {

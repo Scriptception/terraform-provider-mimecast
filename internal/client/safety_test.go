@@ -112,6 +112,136 @@ func TestTokenURLDefaultsToResolvedBaseURL(t *testing.T) {
 	}
 }
 
+func TestNewRejectsRemotePlaintextServiceURLsWithoutLeakingValues(t *testing.T) {
+	secret := "diagnostic-secret-marker"
+	for _, test := range []struct {
+		name   string
+		config Config
+	}{
+		{
+			name: "base URL",
+			config: Config{
+				BaseURL:      "http://service-user:" + secret + "@api.example.test",
+				ClientID:     "id",
+				ClientSecret: "secret",
+			},
+		},
+		{
+			name: "token URL",
+			config: Config{
+				BaseURL:      "https://api.example.test",
+				TokenURL:     "http://service-user:" + secret + "@auth.example.test/oauth/token",
+				ClientID:     "id",
+				ClientSecret: "secret",
+			},
+		},
+		{
+			name: "insecure does not permit plaintext",
+			config: Config{
+				BaseURL:      "http://service-user:" + secret + "@api.example.test",
+				ClientID:     "id",
+				ClientSecret: "secret",
+				Insecure:     true,
+			},
+		},
+		{
+			name: "malformed URL",
+			config: Config{
+				BaseURL:      "https://[" + secret,
+				ClientID:     "id",
+				ClientSecret: "secret",
+			},
+		},
+		{
+			name: "loopback plaintext through remote proxy",
+			config: Config{
+				BaseURL:      "http://127.0.0.1:8080",
+				TokenURL:     "http://127.0.0.1:8080/oauth/token",
+				ProxyURL:     "http://proxy-user:" + secret + "@proxy.example.test:8080",
+				ClientID:     "id",
+				ClientSecret: "secret",
+			},
+		},
+		{
+			name: "hostname does not opt in to loopback plaintext",
+			config: Config{
+				BaseURL:      "http://localhost:8080",
+				ClientID:     "id",
+				ClientSecret: "secret",
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := New(test.config)
+			if err == nil {
+				t.Fatal("remote plaintext service URL must be rejected")
+			}
+			if strings.Contains(err.Error(), secret) {
+				t.Fatal("service URL error exposed a sensitive value marker")
+			}
+		})
+	}
+}
+
+func TestNewAllowsLoopbackHTTPForTests(t *testing.T) {
+	_, err := New(Config{
+		BaseURL:      "http://127.0.0.1:8080",
+		TokenURL:     "http://[::1]:8080/oauth/token",
+		ClientID:     "id",
+		ClientSecret: "secret",
+	})
+	if err != nil {
+		t.Fatalf("loopback HTTP must remain available for tests: %v", err)
+	}
+}
+
+func TestServiceTransportBlocksRemotePlaintextRedirects(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		handler http.HandlerFunc
+		path    string
+	}{
+		{
+			name: "OAuth request",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				http.Redirect(w, r, "http://auth.example.test/oauth/token", http.StatusTemporaryRedirect)
+			},
+			path: "/identity/whoami",
+		},
+		{
+			name: "bearer request",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/oauth/token" {
+					tokenFixture(w)
+					return
+				}
+				http.Redirect(w, r, "http://api.example.test/redirected", http.StatusTemporaryRedirect)
+			},
+			path: "/identity/whoami",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			server := httptest.NewTLSServer(test.handler)
+			defer server.Close()
+			apiClient, err := New(Config{
+				BaseURL:      server.URL,
+				TokenURL:     server.URL + "/oauth/token",
+				ClientID:     "id",
+				ClientSecret: "secret",
+				Insecure:     true,
+				MaxRetries:   0,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			err = apiClient.Do(context.Background(), http.MethodGet, test.path, nil, nil, nil)
+			if err == nil || !strings.Contains(err.Error(), "blocked non-HTTPS") {
+				t.Fatalf("remote plaintext redirect error = %v", err)
+			}
+		})
+	}
+}
+
 func TestProxyRoutesOAuthAndAPIWithoutLeakingProxyOrBody(t *testing.T) {
 	paths := make([]string, 0, 2)
 	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -129,7 +259,7 @@ func TestProxyRoutesOAuthAndAPIWithoutLeakingProxyOrBody(t *testing.T) {
 		t.Fatal(err)
 	}
 	proxyURL.User = url.UserPassword("proxy-user", "proxy-secret")
-	c, err := New(Config{BaseURL: "http://mimecast.invalid", ClientID: "id", ClientSecret: "secret", ProxyURL: proxyURL.String(), MaxRetries: 0})
+	c, err := New(Config{BaseURL: "http://127.0.0.1:1", ClientID: "id", ClientSecret: "secret", ProxyURL: proxyURL.String(), MaxRetries: 0})
 	if err != nil {
 		t.Fatal(err)
 	}

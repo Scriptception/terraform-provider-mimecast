@@ -6,6 +6,8 @@
 
 - Prevented sensitive proxy credentials and email addresses from appearing in
   validation diagnostics or set-element diagnostic paths.
+- Rejected plaintext remote API and OAuth endpoints while retaining HTTP on
+  numeric loopback addresses for local tests.
 
 ## 0.2.2 - 2026-08-09
 
