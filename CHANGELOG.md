@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.2.5 - 2026-08-09
+
+- Fixed ID-only imports for Address Alteration policies by hydrating the
+  required policy scope during the first read.
+
 ## 0.2.4 - 2026-08-09
 
 - Normalised delivery-route authentication-mechanism reads by trimming
