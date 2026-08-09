@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.2.13 - 2026-08-10
+
+- Treated filtered managed URL reads as an optimisation and fell back to the
+  authoritative unfiltered inventory when Mimecast rejects a filter.
+
 ## 0.2.12 - 2026-08-10
 
 - Hydrated profile-group member notes during import and refresh so configured
