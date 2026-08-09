@@ -90,6 +90,48 @@ type ManagedURL struct {
 	DisableLogClick      *bool  `json:"disableLogClick,omitempty"`
 	DisableRewrite       *bool  `json:"disableRewrite,omitempty"`
 	DisableUserAwareness *bool  `json:"disableUserAwareness,omitempty"`
+	Scheme               string `json:"-"`
+	Domain               string `json:"-"`
+	Port                 int64  `json:"-"`
+	Path                 string `json:"-"`
+	QueryString          string `json:"-"`
+}
+
+func (m *ManagedURL) UnmarshalJSON(data []byte) error {
+	var response struct {
+		ID                   string `json:"id"`
+		URL                  string `json:"url"`
+		Action               string `json:"action"`
+		MatchType            string `json:"matchType"`
+		Comment              string `json:"comment"`
+		DisableLogClick      *bool  `json:"disableLogClick"`
+		DisableRewrite       *bool  `json:"disableRewrite"`
+		DisableUserAwareness *bool  `json:"disableUserAwareness"`
+		Scheme               string `json:"scheme"`
+		Domain               string `json:"domain"`
+		Port                 int64  `json:"port"`
+		Path                 string `json:"path"`
+		QueryString          string `json:"queryString"`
+	}
+	if err := json.Unmarshal(data, &response); err != nil {
+		return err
+	}
+	*m = ManagedURL{
+		ID:                   response.ID,
+		URL:                  response.URL,
+		Action:               response.Action,
+		MatchType:            response.MatchType,
+		Comment:              response.Comment,
+		DisableLogClick:      response.DisableLogClick,
+		DisableRewrite:       response.DisableRewrite,
+		DisableUserAwareness: response.DisableUserAwareness,
+		Scheme:               response.Scheme,
+		Domain:               response.Domain,
+		Port:                 response.Port,
+		Path:                 response.Path,
+		QueryString:          response.QueryString,
+	}
+	return nil
 }
 
 type LegacyEnvelope[T any] struct {

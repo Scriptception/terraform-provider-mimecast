@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strconv"
+	"strings"
 )
 
 type PolicyEndpoint struct {
@@ -192,8 +194,26 @@ func (c *Client) ListDNSOutboundDefinitions(ctx context.Context) ([]DNSOutboundD
 }
 
 func (c *Client) CreateManagedURL(ctx context.Context, m ManagedURL) (string, error) {
+	type createRequest struct {
+		URL                  string `json:"url,omitempty"`
+		Action               string `json:"action,omitempty"`
+		MatchType            string `json:"matchType,omitempty"`
+		Comment              string `json:"comment,omitempty"`
+		DisableLogClick      *bool  `json:"disableLogClick,omitempty"`
+		DisableRewrite       *bool  `json:"disableRewrite,omitempty"`
+		DisableUserAwareness *bool  `json:"disableUserAwareness,omitempty"`
+	}
+	request := createRequest{
+		URL:                  m.URL,
+		Action:               m.Action,
+		MatchType:            m.MatchType,
+		Comment:              m.Comment,
+		DisableLogClick:      m.DisableLogClick,
+		DisableRewrite:       m.DisableRewrite,
+		DisableUserAwareness: m.DisableUserAwareness,
+	}
 	var out LegacyEnvelope[ManagedURL]
-	err := c.Do(ctx, http.MethodPost, "/api/ttp/url/create-managed-url", nil, map[string]any{"data": []ManagedURL{m}}, &out)
+	err := c.Do(ctx, http.MethodPost, "/api/ttp/url/create-managed-url", nil, map[string]any{"data": []createRequest{request}}, &out)
 	if err != nil {
 		return "", err
 	}
@@ -229,7 +249,10 @@ func (c *Client) ListManagedURLs(ctx context.Context, filter string, exact bool)
 		if err := c.DoRead(ctx, http.MethodPost, "/api/ttp/url/get-all-managed-urls", nil, body, &out); err != nil {
 			return nil, err
 		}
-		items = append(items, out.Data...)
+		for i := range out.Data {
+			canonicalizeManagedURL(&out.Data[i])
+			items = append(items, out.Data[i])
+		}
 		next := out.Meta.Pagination.Next
 		if next == "" {
 			break
@@ -247,4 +270,45 @@ func (c *Client) ListManagedURLs(ctx context.Context, filter string, exact bool)
 		return items[i].URL < items[j].URL
 	})
 	return items, nil
+}
+
+func canonicalizeManagedURL(item *ManagedURL) {
+	item.Action = strings.ToLower(strings.TrimSpace(item.Action))
+	item.MatchType = strings.ToLower(strings.TrimSpace(item.MatchType))
+	if item.URL != "" {
+		return
+	}
+
+	domain := strings.TrimSpace(item.Domain)
+	switch item.MatchType {
+	case "domain":
+		if domain == "" {
+			return
+		}
+		item.URL = domain
+	case "explicit":
+		scheme := strings.TrimSpace(item.Scheme)
+		if scheme == "" || domain == "" || item.Port < -1 || item.Port > 65535 {
+			return
+		}
+		var value strings.Builder
+		value.WriteString(scheme)
+		value.WriteString("://")
+		value.WriteString(domain)
+		if item.Port > 0 {
+			value.WriteByte(':')
+			value.WriteString(strconv.FormatInt(item.Port, 10))
+		}
+		if item.Path != "" {
+			if !strings.HasPrefix(item.Path, "/") {
+				value.WriteByte('/')
+			}
+			value.WriteString(item.Path)
+		}
+		if item.QueryString != "" {
+			value.WriteByte('?')
+			value.WriteString(strings.TrimPrefix(item.QueryString, "?"))
+		}
+		item.URL = value.String()
+	}
 }
