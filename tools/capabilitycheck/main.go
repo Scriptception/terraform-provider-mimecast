@@ -22,7 +22,7 @@ import (
 const (
 	catalogueURL = "https://developer.services.mimecast.com/portals/api/sites/mimecast-prod-apigee-developer/liveportal/apis"
 	specURL      = catalogueURL + "/%s/spec"
-	userAgent    = "terraform-provider-mimecast-capability-check/0.2.0"
+	userAgent    = "terraform-provider-mimecast-capability-check/0.2.1"
 )
 
 var surfacePattern = regexp.MustCompile(`^(resource|data_source)\.mimecast_[a-z0-9_]+$`)

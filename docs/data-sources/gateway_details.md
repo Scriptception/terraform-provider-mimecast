@@ -23,6 +23,18 @@ data "mimecast_gateway_details" "current" {}
 
 - `account_code` (String, Sensitive) Cloud Gateway account code.
 - `id` (String) Stable data source ID.
+- `inbound_mx_records` (Attributes) Inbound mail-flow MX record. (see [below for nested schema](#nestedatt--inbound_mx_records))
+- `outbound_enabled` (Boolean) Whether outbound mail flow is enabled.
+- `outbound_hostnames` (List of String) Outbound mail hostnames.
 - `protection_mode` (String) Gateway protection mode.
 - `region` (String) Mimecast region.
+- `spf` (String) SPF record for outbound mail.
 - `status` (String) Gateway status.
+
+<a id="nestedatt--inbound_mx_records"></a>
+### Nested Schema for `inbound_mx_records`
+
+Read-Only:
+
+- `hostname` (String) Inbound MX hostname.
+- `priority` (Number) Inbound MX priority.
