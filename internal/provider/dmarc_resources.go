@@ -520,7 +520,7 @@ func (r *dmarcNotificationResource) Schema(_ context.Context, _ resource.SchemaR
 		},
 		"emails": schema.SetAttribute{
 			Description: "Notification recipient email address. The API accepts exactly one address.", Required: true, Sensitive: true, ElementType: types.StringType,
-			Validators: []validator.Set{setvalidator.SizeBetween(1, 1), setvalidator.ValueStringsAre(dmarcEmailValidator{})},
+			Validators: []validator.Set{setvalidator.SizeBetween(1, 1), dmarcEmailSetValidator{}},
 		},
 		"frequency": dmarcOptionalComputedFrequency("Notification frequency."),
 		"domain_ids": schema.SetAttribute{
@@ -812,11 +812,43 @@ func (dmarcEmailValidator) ValidateString(_ context.Context, req validator.Strin
 	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
 		return
 	}
-	value := strings.TrimSpace(req.ConfigValue.ValueString())
-	parsed, err := mail.ParseAddress(value)
-	if err != nil || parsed.Address != value {
-		resp.Diagnostics.AddAttributeError(req.Path, "Invalid email address", fmt.Sprintf("%q is not a valid email address.", value))
+	if !validDMARCEmail(req.ConfigValue.ValueString()) {
+		resp.Diagnostics.AddAttributeError(req.Path, "Invalid email address", "Email address must use a valid mailbox format.")
 	}
+}
+
+type dmarcEmailSetValidator struct{}
+
+func (dmarcEmailSetValidator) Description(context.Context) string {
+	return "must contain valid email addresses"
+}
+func (dmarcEmailSetValidator) MarkdownDescription(context.Context) string {
+	return "must contain valid email addresses"
+}
+func (dmarcEmailSetValidator) ValidateSet(_ context.Context, req validator.SetRequest, resp *validator.SetResponse) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+	for _, element := range req.ConfigValue.Elements() {
+		value, ok := element.(types.String)
+		if !ok {
+			resp.Diagnostics.AddAttributeError(req.Path, "Invalid email address set", "Email address set contains an unexpected value type.")
+			return
+		}
+		if value.IsNull() || value.IsUnknown() {
+			continue
+		}
+		if !validDMARCEmail(value.ValueString()) {
+			resp.Diagnostics.AddAttributeError(req.Path, "Invalid email address", "Email address must use a valid mailbox format.")
+			return
+		}
+	}
+}
+
+func validDMARCEmail(value string) bool {
+	value = strings.TrimSpace(value)
+	parsed, err := mail.ParseAddress(value)
+	return err == nil && parsed.Address == value
 }
 
 // ---- DMARC policy preset --------------------------------------------------

@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"fmt"
 	"net/url"
 
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -18,7 +17,7 @@ func (urlValidator) ValidateString(_ context.Context, req validator.StringReques
 	}
 	u, err := url.Parse(req.ConfigValue.ValueString())
 	if err != nil || u.Scheme == "" || u.Host == "" {
-		resp.Diagnostics.AddAttributeError(req.Path, "Invalid URL", fmt.Sprintf("%q must include a scheme and host.", req.ConfigValue.ValueString()))
+		resp.Diagnostics.AddAttributeError(req.Path, "Invalid URL", "URL must include a scheme and host.")
 	}
 }
 
