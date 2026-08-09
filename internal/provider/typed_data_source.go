@@ -79,6 +79,10 @@ func dsInt64(description string) dsschema.Int64Attribute {
 	return dsschema.Int64Attribute{Description: description, Computed: true}
 }
 
+func dsFloat64(description string) dsschema.Float64Attribute {
+	return dsschema.Float64Attribute{Description: description, Computed: true}
+}
+
 func dsStringList(description string, sensitive bool) dsschema.ListAttribute {
 	return dsschema.ListAttribute{Description: description, Computed: true, Sensitive: sensitive, ElementType: types.StringType}
 }
@@ -121,22 +125,43 @@ func NewWhoamiDataSource() datasource.DataSource {
 }
 
 type gatewayDetailsModel struct {
-	ID             types.String `tfsdk:"id"`
-	AccountCode    types.String `tfsdk:"account_code"`
-	Region         types.String `tfsdk:"region"`
-	ProtectionMode types.String `tfsdk:"protection_mode"`
-	Status         types.String `tfsdk:"status"`
+	ID                types.String                 `tfsdk:"id"`
+	AccountCode       types.String                 `tfsdk:"account_code"`
+	Region            types.String                 `tfsdk:"region"`
+	ProtectionMode    types.String                 `tfsdk:"protection_mode"`
+	Status            types.String                 `tfsdk:"status"`
+	OutboundEnabled   types.Bool                   `tfsdk:"outbound_enabled"`
+	OutboundHostnames types.List                   `tfsdk:"outbound_hostnames"`
+	InboundMXRecords  *gatewayInboundMXRecordModel `tfsdk:"inbound_mx_records"`
+	SPF               types.String                 `tfsdk:"spf"`
+}
+
+type gatewayInboundMXRecordModel struct {
+	Hostname types.String  `tfsdk:"hostname"`
+	Priority types.Float64 `tfsdk:"priority"`
 }
 
 func NewGatewayDetailsDataSource() datasource.DataSource {
-	attrs := map[string]dsschema.Attribute{"id": dsID("Stable data source ID."), "account_code": dsSensitiveString("Cloud Gateway account code."), "region": dsString("Mimecast region."), "protection_mode": dsString("Gateway protection mode."), "status": dsString("Gateway status.")}
+	attrs := map[string]dsschema.Attribute{
+		"id": dsID("Stable data source ID."), "account_code": dsSensitiveString("Cloud Gateway account code."), "region": dsString("Mimecast region."), "protection_mode": dsString("Gateway protection mode."), "status": dsString("Gateway status."),
+		"outbound_enabled": dsBool("Whether outbound mail flow is enabled."), "outbound_hostnames": dsStringList("Outbound mail hostnames.", false),
+		"inbound_mx_records": dsschema.SingleNestedAttribute{Description: "Inbound mail-flow MX record.", Computed: true, Attributes: map[string]dsschema.Attribute{
+			"hostname": dsString("Inbound MX hostname."), "priority": dsFloat64("Inbound MX priority."),
+		}},
+		"spf": dsString("SPF record for outbound mail."),
+	}
 	return newTypedDataSource("gateway_details", "Read typed Cloud Gateway account details.", attrs, func(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse, c *client.Client) {
 		out, err := c.GetGatewayDetails(ctx)
 		if err != nil {
 			resp.Diagnostics.AddError("Unable to read gateway details", err.Error())
 			return
 		}
-		state := gatewayDetailsModel{ID: types.StringValue("gateway_details"), AccountCode: stringValue(out.AccountCode), Region: stringValue(out.Region), ProtectionMode: stringValue(out.ProtectionMode), Status: stringValue(out.Status)}
+		outboundHostnames, diags := listFromStrings(ctx, out.OutboundHostnames)
+		resp.Diagnostics.Append(diags...)
+		state := gatewayDetailsModel{ID: types.StringValue("gateway_details"), AccountCode: stringValue(out.AccountCode), Region: stringValue(out.Region), ProtectionMode: stringValue(out.ProtectionMode), Status: stringValue(out.Status), OutboundEnabled: boolValue(out.OutboundEnabled), OutboundHostnames: outboundHostnames, SPF: stringValue(out.SPF)}
+		if out.InboundMXRecords != nil {
+			state.InboundMXRecords = &gatewayInboundMXRecordModel{Hostname: stringValue(out.InboundMXRecords.Hostname), Priority: types.Float64Value(out.InboundMXRecords.Priority)}
+		}
 		resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 	})
 }
@@ -167,23 +192,30 @@ func NewEmergencyContactDataSource() datasource.DataSource {
 }
 
 type accountModel struct {
-	ID                    types.String `tfsdk:"id"`
-	AccountCode           types.String `tfsdk:"account_code"`
-	AccountName           types.String `tfsdk:"account_name"`
-	MimecastID            types.String `tfsdk:"mimecast_id"`
-	Region                types.String `tfsdk:"region"`
-	Type                  types.String `tfsdk:"type"`
-	MailPlatform          types.String `tfsdk:"mail_platform"`
-	Gateway               types.Bool   `tfsdk:"gateway"`
-	Archive               types.Bool   `tfsdk:"archive"`
-	PolicyInheritance     types.Bool   `tfsdk:"policy_inheritance"`
-	MaxRetention          types.Int64  `tfsdk:"max_retention"`
-	MinRetentionEnabled   types.Bool   `tfsdk:"min_retention_enabled"`
-	UserCount             types.Int64  `tfsdk:"user_count"`
-	Packages              types.List   `tfsdk:"packages"`
-	CybergraphV2Enabled   types.Bool   `tfsdk:"cybergraph_v2_enabled"`
-	ExportAPI             types.Bool   `tfsdk:"export_api"`
-	AutomatedSegmentPurge types.Bool   `tfsdk:"automated_segment_purge"`
+	ID                              types.String `tfsdk:"id"`
+	AccountCode                     types.String `tfsdk:"account_code"`
+	AccountName                     types.String `tfsdk:"account_name"`
+	MimecastID                      types.String `tfsdk:"mimecast_id"`
+	Region                          types.String `tfsdk:"region"`
+	Type                            types.String `tfsdk:"type"`
+	MailPlatform                    types.String `tfsdk:"mail_platform"`
+	Gateway                         types.Bool   `tfsdk:"gateway"`
+	Archive                         types.Bool   `tfsdk:"archive"`
+	PolicyInheritance               types.Bool   `tfsdk:"policy_inheritance"`
+	MaxRetention                    types.Int64  `tfsdk:"max_retention"`
+	MinRetentionEnabled             types.Bool   `tfsdk:"min_retention_enabled"`
+	UserCount                       types.Int64  `tfsdk:"user_count"`
+	Packages                        types.List   `tfsdk:"packages"`
+	CybergraphV2Enabled             types.Bool   `tfsdk:"cybergraph_v2_enabled"`
+	ExportAPI                       types.Bool   `tfsdk:"export_api"`
+	AutomatedSegmentPurge           types.Bool   `tfsdk:"automated_segment_purge"`
+	AdminSessionTimeout             types.Int64  `tfsdk:"admin_session_timeout"`
+	ContentAdministratorDefaultView types.String `tfsdk:"content_administrator_default_view"`
+	ExgestAllowExtraction           types.Bool   `tfsdk:"exgest_allow_extraction"`
+	ExgestAllowQuery                types.Bool   `tfsdk:"exgest_allow_query"`
+	ExpressAccount                  types.Bool   `tfsdk:"express_account"`
+	MaxRetentionConfirmed           types.Bool   `tfsdk:"max_retention_confirmed"`
+	SearchReason                    types.Bool   `tfsdk:"search_reason"`
 }
 
 func NewAccountDataSource() datasource.DataSource {
@@ -193,6 +225,9 @@ func NewAccountDataSource() datasource.DataSource {
 		"archive": dsBool("Whether archive features are enabled."), "policy_inheritance": dsBool("Whether policy inheritance is enabled."), "max_retention": dsInt64("Maximum retention in days."),
 		"min_retention_enabled": dsBool("Whether minimum retention is enabled."), "user_count": dsInt64("Licensed user count."), "packages": dsStringList("Enabled account package names.", false),
 		"cybergraph_v2_enabled": dsBool("Whether CyberGraph v2 is enabled."), "export_api": dsBool("Whether export API features are enabled."), "automated_segment_purge": dsBool("Whether automated segment purge is enabled."),
+		"admin_session_timeout": dsInt64("Administrator session timeout in minutes."), "content_administrator_default_view": dsString("Default view for content administrators."),
+		"exgest_allow_extraction": dsBool("Whether data extraction operations are allowed."), "exgest_allow_query": dsBool("Whether data-ingestion query operations are allowed."),
+		"express_account": dsBool("Whether this is an express account."), "max_retention_confirmed": dsBool("Whether maximum retention has been confirmed."), "search_reason": dsBool("Whether search-reason auditing is enabled."),
 	}
 	return newTypedDataSource("account", "Read a safe typed account summary. Contact details, support passphrases, and other secrets are deliberately excluded.", attrs, func(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse, c *client.Client) {
 		out, err := c.GetAccountSummary(ctx)
@@ -206,7 +241,7 @@ func NewAccountDataSource() datasource.DataSource {
 		}
 		packageList, diags := listFromStrings(ctx, packages)
 		resp.Diagnostics.Append(diags...)
-		state := accountModel{ID: types.StringValue("account"), AccountCode: stringValue(out.AccountCode), AccountName: stringValue(out.AccountName), MimecastID: stringValue(out.MimecastID), Region: stringValue(out.Region), Type: stringValue(out.Type), MailPlatform: stringValue(out.MailPlatform), Gateway: boolValue(out.Gateway), Archive: boolValue(out.Archive), PolicyInheritance: boolValue(out.PolicyInheritance), MaxRetention: types.Int64Value(out.MaxRetention), MinRetentionEnabled: boolValue(out.MinRetentionEnabled), UserCount: types.Int64Value(out.UserCount), Packages: packageList, CybergraphV2Enabled: boolValue(out.CybergraphV2Enabled), ExportAPI: boolValue(out.ExportAPI), AutomatedSegmentPurge: boolValue(out.AutomatedSegmentPurge)}
+		state := accountModel{ID: types.StringValue("account"), AccountCode: stringValue(out.AccountCode), AccountName: stringValue(out.AccountName), MimecastID: stringValue(out.MimecastID), Region: stringValue(out.Region), Type: stringValue(out.Type), MailPlatform: stringValue(out.MailPlatform), Gateway: boolValue(out.Gateway), Archive: boolValue(out.Archive), PolicyInheritance: boolValue(out.PolicyInheritance), MaxRetention: types.Int64Value(out.MaxRetention), MinRetentionEnabled: boolValue(out.MinRetentionEnabled), UserCount: types.Int64Value(out.UserCount), Packages: packageList, CybergraphV2Enabled: boolValue(out.CybergraphV2Enabled), ExportAPI: boolValue(out.ExportAPI), AutomatedSegmentPurge: boolValue(out.AutomatedSegmentPurge), AdminSessionTimeout: types.Int64Value(out.AdminSessionTimeout), ContentAdministratorDefaultView: stringValue(out.ContentAdministratorDefaultView), ExgestAllowExtraction: boolValue(out.ExgestAllowExtraction), ExgestAllowQuery: boolValue(out.ExgestAllowQuery), ExpressAccount: boolValue(out.ExpressAccount), MaxRetentionConfirmed: boolValue(out.MaxRetentionConfirmed), SearchReason: boolValue(out.SearchReason)}
 		resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 	})
 }
@@ -335,6 +370,8 @@ type userItemModel struct {
 	Disabled        types.Bool   `tfsdk:"disabled"`
 	CreatedDateTime types.String `tfsdk:"created_date_time"`
 	UpdatedDateTime types.String `tfsdk:"updated_date_time"`
+	AddressType     types.String `tfsdk:"address_type"`
+	IsAlias         types.Bool   `tfsdk:"is_alias"`
 }
 
 type usersModel struct {
@@ -343,7 +380,7 @@ type usersModel struct {
 }
 
 func NewUsersDataSource() datasource.DataSource {
-	itemAttrs := map[string]dsschema.Attribute{"id": dsID("User ID."), "email_address": dsSensitiveString("User email address."), "name": dsString("Display name."), "domain": dsString("Parent domain."), "type": dsString("Directory user type."), "internal": dsBool("Whether the user is internal."), "disabled": dsBool("Whether the user is disabled."), "created_date_time": dsString("Creation timestamp."), "updated_date_time": dsString("Last update timestamp.")}
+	itemAttrs := map[string]dsschema.Attribute{"id": dsID("User ID."), "email_address": dsSensitiveString("User email address."), "name": dsString("Display name."), "domain": dsString("Parent domain."), "type": dsString("Directory user type."), "internal": dsBool("Whether the user is internal."), "disabled": dsBool("Whether the user is disabled."), "created_date_time": dsString("Creation timestamp."), "updated_date_time": dsString("Last update timestamp."), "address_type": dsString("Mimecast address type."), "is_alias": dsBool("Whether the user is an alias.")}
 	attrs := map[string]dsschema.Attribute{"id": dsID("Stable user inventory ID."), "items": dsItems(itemAttrs)}
 	return newTypedDataSource("users", "Read all directory users with cursor pagination. Email addresses are marked sensitive in Terraform output.", attrs, func(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse, c *client.Client) {
 		out, err := c.ListUsers(ctx)
@@ -353,7 +390,7 @@ func NewUsersDataSource() datasource.DataSource {
 		}
 		items := make([]userItemModel, 0, len(out))
 		for _, item := range out {
-			items = append(items, userItemModel{ID: stringValue(item.ID), EmailAddress: stringValue(item.EmailAddress), Name: stringValue(item.Name), Domain: stringValue(item.Domain), Type: stringValue(item.Type), Internal: boolValue(item.Internal), Disabled: boolValue(item.Disabled), CreatedDateTime: stringValue(item.CreatedDateTime), UpdatedDateTime: stringValue(item.UpdatedDateTime)})
+			items = append(items, userItemModel{ID: stringValue(item.ID), EmailAddress: stringValue(item.EmailAddress), Name: stringValue(item.Name), Domain: stringValue(item.Domain), Type: stringValue(item.Type), Internal: boolValue(item.Internal), Disabled: boolValue(item.Disabled), CreatedDateTime: stringValue(item.CreatedDateTime), UpdatedDateTime: stringValue(item.UpdatedDateTime), AddressType: stringValue(item.AddressType), IsAlias: boolValue(item.IsAlias)})
 		}
 		resp.Diagnostics.Append(resp.State.Set(ctx, &usersModel{ID: types.StringValue("users"), Items: items})...)
 	})

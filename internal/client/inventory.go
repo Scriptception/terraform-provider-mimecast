@@ -24,10 +24,19 @@ type WhoAmI struct {
 }
 
 type GatewayDetails struct {
-	AccountCode    string `json:"accountCode,omitempty"`
-	Region         string `json:"region,omitempty"`
-	ProtectionMode string `json:"protectionMode,omitempty"`
-	Status         string `json:"status,omitempty"`
+	AccountCode       string                  `json:"accountCode,omitempty"`
+	Region            string                  `json:"region,omitempty"`
+	ProtectionMode    string                  `json:"protectionMode,omitempty"`
+	Status            string                  `json:"status,omitempty"`
+	OutboundEnabled   *bool                   `json:"outboundEnabled,omitempty"`
+	OutboundHostnames []string                `json:"outboundHostnames,omitempty"`
+	InboundMXRecords  *GatewayInboundMXRecord `json:"inboundMxRecords,omitempty"`
+	SPF               string                  `json:"spf,omitempty"`
+}
+
+type GatewayInboundMXRecord struct {
+	Hostname string  `json:"hostname,omitempty"`
+	Priority float64 `json:"priority,omitempty"`
 }
 
 type EmergencyContact struct {
@@ -65,22 +74,29 @@ func (p *AccountPackageName) UnmarshalJSON(data []byte) error {
 }
 
 type AccountSummary struct {
-	AccountCode           string               `json:"accountCode,omitempty"`
-	AccountName           string               `json:"accountName,omitempty"`
-	MimecastID            string               `json:"mimecastId,omitempty"`
-	Region                string               `json:"region,omitempty"`
-	Type                  string               `json:"type,omitempty"`
-	MailPlatform          string               `json:"mailPlatform,omitempty"`
-	Gateway               *bool                `json:"gateway,omitempty"`
-	Archive               *bool                `json:"archive,omitempty"`
-	PolicyInheritance     *bool                `json:"policyInheritance,omitempty"`
-	MaxRetention          int64                `json:"maxRetention,omitempty"`
-	MinRetentionEnabled   *bool                `json:"minRetentionEnabled,omitempty"`
-	UserCount             int64                `json:"userCount,omitempty"`
-	Packages              []AccountPackageName `json:"packages,omitempty"`
-	CybergraphV2Enabled   *bool                `json:"cybergraphV2Enabled,omitempty"`
-	ExportAPI             *bool                `json:"exportApi,omitempty"`
-	AutomatedSegmentPurge *bool                `json:"automatedSegmentPurge,omitempty"`
+	AccountCode                     string               `json:"accountCode,omitempty"`
+	AccountName                     string               `json:"accountName,omitempty"`
+	MimecastID                      string               `json:"mimecastId,omitempty"`
+	Region                          string               `json:"region,omitempty"`
+	Type                            string               `json:"type,omitempty"`
+	MailPlatform                    string               `json:"mailPlatform,omitempty"`
+	Gateway                         *bool                `json:"gateway,omitempty"`
+	Archive                         *bool                `json:"archive,omitempty"`
+	PolicyInheritance               *bool                `json:"policyInheritance,omitempty"`
+	MaxRetention                    int64                `json:"maxRetention,omitempty"`
+	MinRetentionEnabled             *bool                `json:"minRetentionEnabled,omitempty"`
+	UserCount                       int64                `json:"userCount,omitempty"`
+	Packages                        []AccountPackageName `json:"packages,omitempty"`
+	CybergraphV2Enabled             *bool                `json:"cybergraphV2Enabled,omitempty"`
+	ExportAPI                       *bool                `json:"exportApi,omitempty"`
+	AutomatedSegmentPurge           *bool                `json:"automatedSegmentPurge,omitempty"`
+	AdminSessionTimeout             int64                `json:"adminSessionTimeout,omitempty"`
+	ContentAdministratorDefaultView string               `json:"contentAdministratorDefaultView,omitempty"`
+	ExgestAllowExtraction           *bool                `json:"exgestAllowExtraction,omitempty"`
+	ExgestAllowQuery                *bool                `json:"exgestAllowQuery,omitempty"`
+	ExpressAccount                  *bool                `json:"expressAccount,omitempty"`
+	MaxRetentionConfirmed           *bool                `json:"maxRetentionConfirmed,omitempty"`
+	SearchReason                    *bool                `json:"searchReason,omitempty"`
 }
 
 type ProvisionedProduct struct {
@@ -110,6 +126,8 @@ type DirectoryUser struct {
 	Disabled        *bool  `json:"disabled,omitempty"`
 	CreatedDateTime string `json:"createdDateTime,omitempty"`
 	UpdatedDateTime string `json:"updatedDateTime,omitempty"`
+	AddressType     string `json:"addressType,omitempty"`
+	IsAlias         *bool  `json:"isAlias,omitempty"`
 }
 
 type Role struct {
@@ -126,6 +144,7 @@ func (c *Client) GetWhoAmI(ctx context.Context) (WhoAmI, error) {
 func (c *Client) GetGatewayDetails(ctx context.Context) (GatewayDetails, error) {
 	var out GatewayDetails
 	err := c.Do(ctx, http.MethodGet, "/email/cloud-gateway/v1/gateway-details", nil, nil, &out)
+	sort.Strings(out.OutboundHostnames)
 	return out, err
 }
 
