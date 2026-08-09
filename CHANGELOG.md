@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.2.2 - 2026-08-09
+
+- Reconstructed managed URL resource values from the documented decomposed API
+  response while retaining incomplete entries in read-only inventory.
+
 ## 0.2.1 - 2026-08-09
 
 - Normalised Cloud Gateway outbound IP discovery across both object-entry and
