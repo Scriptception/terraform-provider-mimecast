@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/Scriptception/terraform-provider-mimecast/internal/client"
@@ -31,7 +34,7 @@ func TestAddressAlterationPolicyImportAndReadHydratesRequiredPolicy(t *testing.T
 			if len(body.Data) != 1 || body.Data[0]["id"] != "policy-1" {
 				t.Fatalf("import read filter = %#v", body.Data)
 			}
-			_, _ = w.Write([]byte(`{"data":[{"id":"rotated-secure-id","addressAlterationSetId":"set-1","policy":{"description":"Imported policy","enabled":true,"from":{"type":"everyone"},"to":{"type":"everyone"},"fromPart":"both","fromEternal":true,"toEternal":true}}]}`))
+			_, _ = w.Write([]byte(`{"data":[{"id":"rotated-policy-id","addressAlterationSetId":"rotated-set-id","policy":{"description":"Imported policy","enabled":true,"from":{"type":"everyone"},"to":{"type":"everyone"},"fromPart":"both","fromEternal":true,"toEternal":true,"conditions":{}}}]}`))
 		default:
 			t.Fatalf("unexpected path %s", request.URL.Path)
 		}
@@ -53,7 +56,7 @@ func TestAddressAlterationPolicyImportAndReadHydratesRequiredPolicy(t *testing.T
 		Schema: schemaResponse.Schema,
 	}
 	importResponse := resource.ImportStateResponse{State: state}
-	instance.ImportState(context.Background(), resource.ImportStateRequest{ID: "policy-1"}, &importResponse)
+	instance.ImportState(context.Background(), resource.ImportStateRequest{ID: "policy-1,set-1"}, &importResponse)
 	if importResponse.Diagnostics.HasError() {
 		t.Fatalf("import diagnostics: %v", importResponse.Diagnostics)
 	}
@@ -61,9 +64,9 @@ func TestAddressAlterationPolicyImportAndReadHydratesRequiredPolicy(t *testing.T
 	var imported addressAlterationPolicyModel
 	importResponse.Diagnostics.Append(importResponse.State.Get(context.Background(), &imported)...)
 	if importResponse.Diagnostics.HasError() {
-		t.Fatalf("ID-only import state diagnostics: %v", importResponse.Diagnostics)
+		t.Fatalf("composite import state diagnostics: %v", importResponse.Diagnostics)
 	}
-	if imported.ID.ValueString() != "policy-1" || imported.Policy != nil {
+	if imported.ID.ValueString() != "policy-1" || imported.AddressAlterationSetID.ValueString() != "set-1" || imported.Policy != nil {
 		t.Fatalf("imported state = %#v", imported)
 	}
 
@@ -85,5 +88,55 @@ func TestAddressAlterationPolicyImportAndReadHydratesRequiredPolicy(t *testing.T
 	}
 	if !got.Policy.Comment.IsNull() {
 		t.Fatalf("omitted comment must remain null, got %#v", got.Policy.Comment)
+	}
+	for name, value := range map[string]types.Set{
+		"source_ips":  got.Policy.SourceIPs,
+		"hostnames":   got.Policy.Hostnames,
+		"spf_domains": got.Policy.SPFDomains,
+	} {
+		if !value.IsNull() {
+			t.Fatalf("omitted %s must remain null, got %#v", name, value)
+		}
+	}
+}
+
+func TestAddressAlterationPolicyInventoryUsesReturnedSetIdentity(t *testing.T) {
+	var model addressAlterationPolicyModel
+	var diagnostics diag.Diagnostics
+	model.fromAPI(context.Background(), client.AddressAlterationPolicy{
+		ID:                     "policy-1",
+		AddressAlterationSetID: "set-1",
+		Policy: client.LegacyPolicyScope{
+			Description: "Inventory policy",
+			From:        client.LegacyPolicyTarget{Type: "everyone"},
+			To:          client.LegacyPolicyTarget{Type: "everyone"},
+		},
+	}, &diagnostics)
+	if diagnostics.HasError() {
+		t.Fatalf("inventory mapping diagnostics: %v", diagnostics)
+	}
+	if model.ID.ValueString() != "policy-1" || model.AddressAlterationSetID.ValueString() != "set-1" {
+		t.Fatalf("inventory identities were not mapped")
+	}
+}
+
+func TestAddressAlterationPolicyImportRejectsIncompleteIdentityWithoutEcho(t *testing.T) {
+	marker := "never-echo-this-import-value"
+	for _, importID := range []string{"", marker, marker + ",", "," + marker, marker + ",set,extra", " " + marker + ",set"} {
+		instance := &addressAlterationPolicyResource{}
+		var schemaResponse resource.SchemaResponse
+		instance.Schema(context.Background(), resource.SchemaRequest{}, &schemaResponse)
+		state := tfsdk.State{
+			Raw:    tftypes.NewValue(schemaResponse.Schema.Type().TerraformType(context.Background()), nil),
+			Schema: schemaResponse.Schema,
+		}
+		response := resource.ImportStateResponse{State: state}
+		instance.ImportState(context.Background(), resource.ImportStateRequest{ID: importID}, &response)
+		if !response.Diagnostics.HasError() {
+			t.Fatalf("import ID was accepted")
+		}
+		if strings.Contains(response.Diagnostics.Errors()[0].Detail(), marker) {
+			t.Fatal("import diagnostic exposed the supplied value")
+		}
 	}
 }

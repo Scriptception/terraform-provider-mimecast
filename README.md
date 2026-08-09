@@ -128,6 +128,10 @@ resource "mimecast_greylisting_policy" "engineering" {
   state and retained artefacts according to the backend's procedures, then
   rotate the exposed credential. Upgrading the provider cannot purge historical
   state or rotate a remote credential.
+- Mimecast can return a different opaque secure ID for the same Address
+  Alteration policy or set on later reads. Import Address Alteration policies
+  with `policy_id,address_alteration_set_id`; the provider retains those working
+  handles in state and uses fresh reads only for the policy configuration.
 - DMARC vendor associations have no published read contract. Vendor record
   updates and address-alteration set creation lack a complete provider-owned
   lifecycle, so those four mutation operations remain explicitly excluded.

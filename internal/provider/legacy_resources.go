@@ -590,7 +590,13 @@ func (r *addressAlterationPolicyResource) Delete(ctx context.Context, req resour
 }
 
 func (r *addressAlterationPolicyResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	importIDPassthrough(ctx, req, resp)
+	parts := strings.Split(req.ID, ",")
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" || strings.TrimSpace(parts[0]) != parts[0] || strings.TrimSpace(parts[1]) != parts[1] {
+		resp.Diagnostics.AddError("Invalid Address Alteration policy import ID", "Use policy_id,address_alteration_set_id.")
+		return
+	}
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, pathRoot("id"), parts[0])...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, pathRoot("address_alteration_set_id"), parts[1])...)
 }
 
 func (m addressAlterationPolicyModel) toAPI(ctx context.Context, diags *diag.Diagnostics) client.AddressAlterationPolicy {
@@ -599,7 +605,12 @@ func (m addressAlterationPolicyModel) toAPI(ctx context.Context, diags *diag.Dia
 
 func (m *addressAlterationPolicyModel) fromAPI(ctx context.Context, in client.AddressAlterationPolicy, diags *diag.Diagnostics) {
 	m.ID = types.StringValue(in.ID)
-	m.AddressAlterationSetID = stringValue(in.AddressAlterationSetID)
+	// Legacy secure IDs can be re-issued with a different opaque value on each
+	// read. Retain the configured or imported set handle so Terraform can detect
+	// intentional configuration changes without planning perpetual updates.
+	if m.AddressAlterationSetID.IsNull() || m.AddressAlterationSetID.IsUnknown() {
+		m.AddressAlterationSetID = stringValue(in.AddressAlterationSetID)
+	}
 	if m.Policy == nil {
 		m.Policy = &legacyPolicyModel{Comment: types.StringNull()}
 	}
