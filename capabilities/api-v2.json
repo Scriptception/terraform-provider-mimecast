@@ -2136,7 +2136,7 @@
         "resource.mimecast_outbound_ip_addresses",
         "data_source.mimecast_outbound_ip_addresses"
       ],
-      "reason": "Read operation for the managed and read-only account-scoped outbound IP address set.",
+      "reason": "Read operation for the managed and read-only account-scoped outbound IP address set, normalising both documented string arrays and object-entry responses.",
       "category": "declarative_configuration",
       "pagination": "not_paginated",
       "permission": {

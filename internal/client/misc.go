@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -293,9 +294,38 @@ func (c *Client) PutOutboundIPAddresses(ctx context.Context, ips []string) error
 	return c.Do(ctx, http.MethodPut, "/email/cloud-gateway/v1/outbound-ip-addresses", nil, map[string]any{"outboundIpAddresses": canonical}, nil)
 }
 
+type outboundIPAddresses []string
+
+// UnmarshalJSON accepts both the string array in the published contract and
+// the object entries returned by the live API.
+func (addresses *outboundIPAddresses) UnmarshalJSON(data []byte) error {
+	var strings []string
+	if err := json.Unmarshal(data, &strings); err == nil {
+		*addresses = strings
+		return nil
+	}
+
+	var objects []struct {
+		OutboundIPAddress string `json:"outboundIpAddress"`
+	}
+	if err := json.Unmarshal(data, &objects); err != nil {
+		return fmt.Errorf("mimecast: decode outbound IP address list")
+	}
+
+	values := make([]string, 0, len(objects))
+	for _, object := range objects {
+		if object.OutboundIPAddress == "" {
+			return fmt.Errorf("mimecast: outbound IP address entry is missing outboundIpAddress")
+		}
+		values = append(values, object.OutboundIPAddress)
+	}
+	*addresses = values
+	return nil
+}
+
 func (c *Client) GetOutboundIPAddresses(ctx context.Context) ([]string, error) {
 	var out struct {
-		OutboundIPAddresses []string `json:"outboundIpAddresses"`
+		OutboundIPAddresses outboundIPAddresses `json:"outboundIpAddresses"`
 	}
 	err := c.Do(ctx, http.MethodGet, "/email/cloud-gateway/v1/outbound-ip-addresses", nil, nil, &out)
 	sort.Strings(out.OutboundIPAddresses)
