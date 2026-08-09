@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.2.8 - 2026-08-10
+
+- Corrected unfiltered managed URL inventory reads to omit the filter object
+  while retaining request-body token pagination.
+
 ## 0.2.7 - 2026-08-10
 
 - Preserved the requested Address Alteration policy identity when Mimecast

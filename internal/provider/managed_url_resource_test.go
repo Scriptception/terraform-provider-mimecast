@@ -172,14 +172,21 @@ func TestManagedURLImportAndReadReconstructsURL(t *testing.T) {
 		case "/oauth/token":
 			_, _ = w.Write([]byte(`{"access_token":"token","expires_in":3600}`))
 		case "/api/ttp/url/get-all-managed-urls":
-			var body struct {
-				Data []map[string]any `json:"data"`
-			}
+			var body map[string]json.RawMessage
 			if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
 				t.Fatal(err)
 			}
-			if len(body.Data) != 1 || len(body.Data[0]) != 0 {
-				t.Fatalf("import read filter = %#v", body.Data)
+			if _, found := body["data"]; found {
+				t.Fatal("unfiltered import read included data")
+			}
+			var metadata struct {
+				Pagination map[string]any `json:"pagination"`
+			}
+			if err := json.Unmarshal(body["meta"], &metadata); err != nil {
+				t.Fatal(err)
+			}
+			if metadata.Pagination == nil {
+				t.Fatal("unfiltered import read did not use metadata-only pagination")
 			}
 			_, _ = w.Write([]byte(`{"data":[{"id":"managed-1","scheme":"https","domain":"example.invalid","port":8443,"path":"/login","queryString":"return=%2F","matchType":"EXPLICIT","action":"BLOCK","comment":"test","disableLogClick":true,"disableRewrite":false,"disableUserAwareness":true}],"meta":{"pagination":{}}}`))
 		default:
