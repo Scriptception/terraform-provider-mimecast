@@ -29,12 +29,14 @@ data "mimecast_users" "all" {}
 
 Read-Only:
 
+- `address_type` (String) Mimecast address type.
 - `created_date_time` (String) Creation timestamp.
 - `disabled` (Boolean) Whether the user is disabled.
 - `domain` (String) Parent domain.
 - `email_address` (String, Sensitive) User email address.
 - `id` (String) User ID.
 - `internal` (Boolean) Whether the user is internal.
+- `is_alias` (Boolean) Whether the user is an alias.
 - `name` (String) Display name.
 - `type` (String) Directory user type.
 - `updated_date_time` (String) Last update timestamp.

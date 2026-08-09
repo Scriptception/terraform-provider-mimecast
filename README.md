@@ -140,10 +140,9 @@ disposable tenant. Every test object must start with `tf-acc-mimecast-`; see
 ## Publishing
 
 Release assets and checksums are produced by GoReleaser and signed with a GPG
-key. Repository maintainers must configure the signing secrets, publish the
-exact `v0.2.0` tag after all release gates pass, and complete the manual
-Terraform Registry provider onboarding. The release workflow signs the
-checksum file. See
+key. Repository maintainers must configure the signing secrets and publish the
+exact tag matching `VERSION` after all release gates pass. The release workflow
+signs the checksum file. See
 [`CONTRIBUTING.md`](./CONTRIBUTING.md#release-process).
 
 ## License

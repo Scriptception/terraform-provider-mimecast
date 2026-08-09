@@ -23,18 +23,25 @@ data "mimecast_account" "current" {}
 
 - `account_code` (String, Sensitive) Mimecast account code.
 - `account_name` (String) Account name.
+- `admin_session_timeout` (Number) Administrator session timeout in minutes.
 - `archive` (Boolean) Whether archive features are enabled.
 - `automated_segment_purge` (Boolean) Whether automated segment purge is enabled.
+- `content_administrator_default_view` (String) Default view for content administrators.
 - `cybergraph_v2_enabled` (Boolean) Whether CyberGraph v2 is enabled.
+- `exgest_allow_extraction` (Boolean) Whether data extraction operations are allowed.
+- `exgest_allow_query` (Boolean) Whether data-ingestion query operations are allowed.
 - `export_api` (Boolean) Whether export API features are enabled.
+- `express_account` (Boolean) Whether this is an express account.
 - `gateway` (Boolean) Whether Cloud Gateway is enabled.
 - `id` (String) Stable account data source ID.
 - `mail_platform` (String) Configured mail platform.
 - `max_retention` (Number) Maximum retention in days.
+- `max_retention_confirmed` (Boolean) Whether maximum retention has been confirmed.
 - `mimecast_id` (String, Sensitive) Mimecast account ID.
 - `min_retention_enabled` (Boolean) Whether minimum retention is enabled.
 - `packages` (List of String) Enabled account package names.
 - `policy_inheritance` (Boolean) Whether policy inheritance is enabled.
 - `region` (String) Hosting region.
+- `search_reason` (Boolean) Whether search-reason auditing is enabled.
 - `type` (String) Account type.
 - `user_count` (Number) Licensed user count.

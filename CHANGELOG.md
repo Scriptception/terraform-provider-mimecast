@@ -2,8 +2,12 @@
 
 ## Unreleased
 
+## 0.2.1 - 2026-08-09
+
 - Normalised Cloud Gateway outbound IP discovery across both object-entry and
   string-array API 2.0 responses.
+- Expanded typed account, gateway and user inventory with documented,
+  non-sensitive API 2.0 fields.
 
 ## 0.2.0 - 2026-08-08
 

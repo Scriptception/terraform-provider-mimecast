@@ -122,7 +122,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "declarative_configuration",
       "pagination": "not_paginated",
       "permission": {
@@ -526,7 +526,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "operational_action",
       "pagination": "not_paginated",
       "permission": {
@@ -892,7 +892,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "operational_action",
       "pagination": "not_paginated",
       "permission": {
@@ -993,7 +993,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "operational_data",
       "pagination": "not_paginated",
       "permission": {
@@ -1016,7 +1016,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "operational_data",
       "pagination": "not_paginated",
       "permission": {
@@ -1039,7 +1039,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "operational_data",
       "pagination": "cursor",
       "permission": {
@@ -1062,7 +1062,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "operational_data",
       "pagination": "not_paginated",
       "permission": {
@@ -1141,7 +1141,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "configuration_discovery",
       "pagination": "not_paginated",
       "permission": {
@@ -1164,7 +1164,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "operational_data",
       "pagination": "not_paginated",
       "permission": {
@@ -1235,7 +1235,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "operational_data",
       "pagination": "not_paginated",
       "permission": {
@@ -1402,7 +1402,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "configuration_discovery",
       "pagination": "cursor",
       "permission": {
@@ -1511,7 +1511,7 @@
         "userandgroupmanagement"
       ],
       "disposition": "excluded",
-      "reason": "Directory integration and synchronisation workflows are not safely modelled as Terraform resources in v0.2.0.",
+      "reason": "Directory integration and synchronisation workflows are not safely modelled as Terraform resources in v0.2.1.",
       "category": "operational_data",
       "pagination": "cursor",
       "permission": {
@@ -1646,7 +1646,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "operational_data",
       "pagination": "not_paginated",
       "permission": {
@@ -1669,7 +1669,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "operational_data",
       "pagination": "not_paginated",
       "permission": {
@@ -1692,7 +1692,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "operational_data",
       "pagination": "not_paginated",
       "permission": {
@@ -1715,7 +1715,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "operational_data",
       "pagination": "not_paginated",
       "permission": {
@@ -2032,7 +2032,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "operational_data",
       "pagination": "not_paginated",
       "permission": {
@@ -2055,7 +2055,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "operational_data",
       "pagination": "not_paginated",
       "permission": {
@@ -2239,7 +2239,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "operational_data",
       "pagination": "cursor",
       "permission": {
@@ -2401,7 +2401,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "operational_data",
       "pagination": "cursor",
       "permission": {
@@ -3066,7 +3066,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "operational_data",
       "pagination": "not_paginated",
       "permission": {
@@ -3089,7 +3089,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "operational_data",
       "pagination": "not_paginated",
       "permission": {
@@ -3112,7 +3112,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "operational_data",
       "pagination": "cursor",
       "permission": {
@@ -3307,7 +3307,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "operational_data",
       "pagination": "cursor",
       "permission": {
@@ -3330,7 +3330,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "operational_data",
       "pagination": "not_paginated",
       "permission": {
@@ -3353,7 +3353,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "operational_data",
       "pagination": "not_paginated",
       "permission": {
@@ -3424,7 +3424,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "operational_data",
       "pagination": "cursor",
       "permission": {
@@ -3447,7 +3447,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "operational_data",
       "pagination": "not_paginated",
       "permission": {
@@ -3470,7 +3470,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "operational_data",
       "pagination": "not_paginated",
       "permission": {
@@ -3947,7 +3947,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "operational_data",
       "pagination": "not_paginated",
       "permission": {
@@ -4048,7 +4048,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "declarative_configuration",
       "pagination": "not_paginated",
       "permission": {
@@ -4605,7 +4605,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "operational_action",
       "pagination": "not_paginated",
       "permission": {
@@ -4930,7 +4930,7 @@
         "userandgroupmanagement"
       ],
       "disposition": "excluded",
-      "reason": "No safe, typed, declarative Terraform lifecycle is available for this API operation in v0.2.0.",
+      "reason": "No safe, typed, declarative Terraform lifecycle is available for this API operation in v0.2.1.",
       "category": "identity_discovery",
       "pagination": "not_paginated",
       "permission": {
@@ -5603,7 +5603,7 @@
         "domainmanagement"
       ],
       "disposition": "excluded",
-      "reason": "No safe, typed, declarative Terraform lifecycle is available for this API operation in v0.2.0.",
+      "reason": "No safe, typed, declarative Terraform lifecycle is available for this API operation in v0.2.1.",
       "category": "operational_action",
       "pagination": "not_paginated",
       "permission": {
@@ -5628,7 +5628,7 @@
         "domainmanagement"
       ],
       "disposition": "excluded",
-      "reason": "No safe, typed, declarative Terraform lifecycle is available for this API operation in v0.2.0.",
+      "reason": "No safe, typed, declarative Terraform lifecycle is available for this API operation in v0.2.1.",
       "category": "operational_action",
       "pagination": "not_paginated",
       "permission": {
@@ -5653,7 +5653,7 @@
         "domainmanagement"
       ],
       "disposition": "excluded",
-      "reason": "No safe, typed, declarative Terraform lifecycle is available for this API operation in v0.2.0.",
+      "reason": "No safe, typed, declarative Terraform lifecycle is available for this API operation in v0.2.1.",
       "category": "operational_data",
       "pagination": "not_paginated",
       "permission": {
@@ -5678,7 +5678,7 @@
         "domainmanagement"
       ],
       "disposition": "excluded",
-      "reason": "No safe, typed, declarative Terraform lifecycle is available for this API operation in v0.2.0.",
+      "reason": "No safe, typed, declarative Terraform lifecycle is available for this API operation in v0.2.1.",
       "category": "operational_data",
       "pagination": "not_paginated",
       "permission": {
@@ -5703,7 +5703,7 @@
         "domainmanagement"
       ],
       "disposition": "excluded",
-      "reason": "No safe, typed, declarative Terraform lifecycle is available for this API operation in v0.2.0.",
+      "reason": "No safe, typed, declarative Terraform lifecycle is available for this API operation in v0.2.1.",
       "category": "operational_data",
       "pagination": "not_paginated",
       "permission": {
@@ -5728,7 +5728,7 @@
         "domainmanagement"
       ],
       "disposition": "excluded",
-      "reason": "No safe, typed, declarative Terraform lifecycle is available for this API operation in v0.2.0.",
+      "reason": "No safe, typed, declarative Terraform lifecycle is available for this API operation in v0.2.1.",
       "category": "operational_data",
       "pagination": "not_paginated",
       "permission": {
@@ -6053,7 +6053,7 @@
         "cloudgateway"
       ],
       "disposition": "excluded",
-      "reason": "No safe, typed, declarative Terraform lifecycle is available for this API operation in v0.2.0.",
+      "reason": "No safe, typed, declarative Terraform lifecycle is available for this API operation in v0.2.1.",
       "category": "operational_data",
       "pagination": "not_paginated",
       "permission": {
@@ -7794,7 +7794,7 @@
         "userandgroupmanagement"
       ],
       "disposition": "excluded",
-      "reason": "Directory integration configuration contains external credentials and test workflows not modelled safely in v0.2.0.",
+      "reason": "Directory integration configuration contains external credentials and test workflows not modelled safely in v0.2.1.",
       "category": "verification_workflow",
       "pagination": "not_paginated",
       "permission": {
@@ -7821,7 +7821,7 @@
         "userandgroupmanagement"
       ],
       "disposition": "excluded",
-      "reason": "Directory integration configuration contains external credentials and test workflows not modelled safely in v0.2.0.",
+      "reason": "Directory integration configuration contains external credentials and test workflows not modelled safely in v0.2.1.",
       "category": "verification_workflow",
       "pagination": "not_paginated",
       "permission": {
@@ -7848,7 +7848,7 @@
         "userandgroupmanagement"
       ],
       "disposition": "excluded",
-      "reason": "Directory integration configuration contains external credentials and test workflows not modelled safely in v0.2.0.",
+      "reason": "Directory integration configuration contains external credentials and test workflows not modelled safely in v0.2.1.",
       "category": "verification_workflow",
       "pagination": "not_paginated",
       "permission": {
@@ -7875,7 +7875,7 @@
         "userandgroupmanagement"
       ],
       "disposition": "excluded",
-      "reason": "Directory integration configuration contains external credentials and test workflows not modelled safely in v0.2.0.",
+      "reason": "Directory integration configuration contains external credentials and test workflows not modelled safely in v0.2.1.",
       "category": "verification_workflow",
       "pagination": "not_paginated",
       "permission": {
@@ -7902,7 +7902,7 @@
         "userandgroupmanagement"
       ],
       "disposition": "excluded",
-      "reason": "Directory integration configuration contains external credentials and test workflows not modelled safely in v0.2.0.",
+      "reason": "Directory integration configuration contains external credentials and test workflows not modelled safely in v0.2.1.",
       "category": "verification_workflow",
       "pagination": "not_paginated",
       "permission": {
@@ -7929,7 +7929,7 @@
         "userandgroupmanagement"
       ],
       "disposition": "excluded",
-      "reason": "Directory integration configuration contains external credentials and test workflows not modelled safely in v0.2.0.",
+      "reason": "Directory integration configuration contains external credentials and test workflows not modelled safely in v0.2.1.",
       "category": "verification_workflow",
       "pagination": "not_paginated",
       "permission": {
@@ -7984,7 +7984,7 @@
         "userandgroupmanagement"
       ],
       "disposition": "excluded",
-      "reason": "Directory integration configuration contains external credentials and test workflows not modelled safely in v0.2.0.",
+      "reason": "Directory integration configuration contains external credentials and test workflows not modelled safely in v0.2.1.",
       "category": "verification_workflow",
       "pagination": "not_paginated",
       "permission": {
@@ -8011,7 +8011,7 @@
         "userandgroupmanagement"
       ],
       "disposition": "excluded",
-      "reason": "Directory integration configuration contains external credentials and test workflows not modelled safely in v0.2.0.",
+      "reason": "Directory integration configuration contains external credentials and test workflows not modelled safely in v0.2.1.",
       "category": "verification_workflow",
       "pagination": "not_paginated",
       "permission": {
@@ -8038,7 +8038,7 @@
         "userandgroupmanagement"
       ],
       "disposition": "excluded",
-      "reason": "Directory integration configuration contains external credentials and test workflows not modelled safely in v0.2.0.",
+      "reason": "Directory integration configuration contains external credentials and test workflows not modelled safely in v0.2.1.",
       "category": "verification_workflow",
       "pagination": "not_paginated",
       "permission": {
@@ -8065,7 +8065,7 @@
         "userandgroupmanagement"
       ],
       "disposition": "excluded",
-      "reason": "Directory integration configuration contains external credentials and test workflows not modelled safely in v0.2.0.",
+      "reason": "Directory integration configuration contains external credentials and test workflows not modelled safely in v0.2.1.",
       "category": "verification_workflow",
       "pagination": "not_paginated",
       "permission": {
@@ -8120,7 +8120,7 @@
         "userandgroupmanagement"
       ],
       "disposition": "excluded",
-      "reason": "Directory integration configuration contains external credentials and test workflows not modelled safely in v0.2.0.",
+      "reason": "Directory integration configuration contains external credentials and test workflows not modelled safely in v0.2.1.",
       "category": "verification_workflow",
       "pagination": "not_paginated",
       "permission": {
@@ -8147,7 +8147,7 @@
         "userandgroupmanagement"
       ],
       "disposition": "excluded",
-      "reason": "Directory integration configuration contains external credentials and test workflows not modelled safely in v0.2.0.",
+      "reason": "Directory integration configuration contains external credentials and test workflows not modelled safely in v0.2.1.",
       "category": "verification_workflow",
       "pagination": "not_paginated",
       "permission": {
@@ -8174,7 +8174,7 @@
         "userandgroupmanagement"
       ],
       "disposition": "excluded",
-      "reason": "Directory integration configuration contains external credentials and test workflows not modelled safely in v0.2.0.",
+      "reason": "Directory integration configuration contains external credentials and test workflows not modelled safely in v0.2.1.",
       "category": "verification_workflow",
       "pagination": "not_paginated",
       "permission": {
@@ -8201,7 +8201,7 @@
         "userandgroupmanagement"
       ],
       "disposition": "excluded",
-      "reason": "Directory integration configuration contains external credentials and test workflows not modelled safely in v0.2.0.",
+      "reason": "Directory integration configuration contains external credentials and test workflows not modelled safely in v0.2.1.",
       "category": "verification_workflow",
       "pagination": "not_paginated",
       "permission": {
@@ -8228,7 +8228,7 @@
         "userandgroupmanagement"
       ],
       "disposition": "excluded",
-      "reason": "Directory integration configuration contains external credentials and test workflows not modelled safely in v0.2.0.",
+      "reason": "Directory integration configuration contains external credentials and test workflows not modelled safely in v0.2.1.",
       "category": "verification_workflow",
       "pagination": "not_paginated",
       "permission": {
@@ -8509,7 +8509,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "verification_workflow",
       "pagination": "not_paginated",
       "permission": {
@@ -8532,7 +8532,7 @@
         "cloudgateway"
       ],
       "disposition": "excluded",
-      "reason": "No safe, typed, declarative Terraform lifecycle is available for this API operation in v0.2.0.",
+      "reason": "No safe, typed, declarative Terraform lifecycle is available for this API operation in v0.2.1.",
       "category": "operational_action",
       "pagination": "not_paginated",
       "permission": {
@@ -8557,7 +8557,7 @@
         "cloudgateway"
       ],
       "disposition": "excluded",
-      "reason": "No safe, typed, declarative Terraform lifecycle is available for this API operation in v0.2.0.",
+      "reason": "No safe, typed, declarative Terraform lifecycle is available for this API operation in v0.2.1.",
       "category": "operational_action",
       "pagination": "not_paginated",
       "permission": {
@@ -8582,7 +8582,7 @@
         "cloudgateway"
       ],
       "disposition": "excluded",
-      "reason": "No safe, typed, declarative Terraform lifecycle is available for this API operation in v0.2.0.",
+      "reason": "No safe, typed, declarative Terraform lifecycle is available for this API operation in v0.2.1.",
       "category": "operational_action",
       "pagination": "not_paginated",
       "permission": {
@@ -9055,7 +9055,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "operational_data",
       "pagination": "cursor",
       "permission": {
@@ -9151,7 +9151,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "operational_action",
       "pagination": "not_paginated",
       "permission": {
@@ -9278,7 +9278,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "declarative_configuration",
       "pagination": "not_paginated",
       "permission": {
@@ -9349,7 +9349,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "declarative_configuration",
       "pagination": "not_paginated",
       "permission": {
@@ -9472,7 +9472,7 @@
         "dmarcanalyzer"
       ],
       "disposition": "excluded",
-      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.0 does not expose a safe typed Terraform lifecycle for this operation.",
+      "reason": "DMARC Analyzer uses a separate service and tenant model; v0.2.1 does not expose a safe typed Terraform lifecycle for this operation.",
       "category": "operational_action",
       "pagination": "not_paginated",
       "permission": {
