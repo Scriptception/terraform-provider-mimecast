@@ -102,21 +102,21 @@ func (r *managedURLResource) Read(ctx context.Context, req resource.ReadRequest,
 	storedID := state.ID.ValueString()
 	if !state.URL.IsNull() && !state.URL.IsUnknown() && state.URL.ValueString() != "" {
 		items, err := r.client.ListManagedURLs(ctx, state.URL.ValueString(), true)
-		if err != nil {
-			resp.Diagnostics.AddError("Unable to read managed URL", err.Error())
-			return
-		}
-		if item, found := managedURLByID(items, storedID); found {
-			if hydrateManagedURLModel(&state, item, "Unable to read managed URL", &resp.Diagnostics) {
-				resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+		// Filtering is only an optimisation. Mimecast can reject a valid URL as a
+		// filter, so any filtered failure falls through to the full inventory.
+		if err == nil {
+			if item, found := managedURLByID(items, storedID); found {
+				if hydrateManagedURLModel(&state, item, "Unable to read managed URL", &resp.Diagnostics) {
+					resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+				}
+				return
 			}
-			return
-		}
-		if item, found := managedURLSemanticMatch(items, state); found {
-			if hydrateManagedURLModel(&state, item, "Unable to read managed URL", &resp.Diagnostics) {
-				resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+			if item, found := managedURLSemanticMatch(items, state); found {
+				if hydrateManagedURLModel(&state, item, "Unable to read managed URL", &resp.Diagnostics) {
+					resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+				}
+				return
 			}
-			return
 		}
 	}
 

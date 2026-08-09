@@ -364,6 +364,56 @@ func TestManagedURLImportThenFilteredMissUsesGlobalSnapshot(t *testing.T) {
 	}
 }
 
+func TestManagedURLImportThenFilteredFailureUsesGlobalSnapshot(t *testing.T) {
+	t.Parallel()
+
+	inventoryReads := 0
+	filteredReads := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if request.URL.Path == "/oauth/token" {
+			_, _ = w.Write([]byte(`{"access_token":"token","expires_in":3600}`))
+			return
+		}
+		var body struct {
+			Data []json.RawMessage `json:"data"`
+		}
+		if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		if len(body.Data) == 0 {
+			inventoryReads++
+			_, _ = w.Write([]byte(`{"data":[{"id":"stable-domain-id","url":"tracked.example.invalid","matchType":"domain","action":"block","comment":"tracked"}],"meta":{"pagination":{}}}`))
+			return
+		}
+		filteredReads++
+		_, _ = w.Write([]byte(`{"fail":[{"errors":[{"code":"contract_error","message":"filtered-private-marker"}]}]}`))
+	}))
+	defer server.Close()
+
+	instance := &managedURLResource{client: managedURLTestClient(t, server)}
+	resourceSchema := managedURLSchema(t, instance)
+	importResponse := resource.ImportStateResponse{State: emptyManagedURLState(resourceSchema)}
+	instance.ImportState(context.Background(), resource.ImportStateRequest{ID: "stable-domain-id"}, &importResponse)
+	if importResponse.Diagnostics.HasError() {
+		t.Fatalf("import diagnostics: %v", importResponse.Diagnostics)
+	}
+
+	readResponse := resource.ReadResponse{State: importResponse.State}
+	instance.Read(context.Background(), resource.ReadRequest{State: importResponse.State}, &readResponse)
+	if readResponse.Diagnostics.HasError() {
+		t.Fatalf("read diagnostics: %v", readResponse.Diagnostics)
+	}
+	assertDiagnosticsExclude(t, readResponse.Diagnostics, "filtered-private-marker", "stable-domain-id", "tracked.example.invalid")
+	var got managedURLModel
+	readResponse.Diagnostics.Append(readResponse.State.Get(context.Background(), &got)...)
+	if got.ID.ValueString() != "stable-domain-id" || got.URL.ValueString() != "tracked.example.invalid" || got.Comment.ValueString() != "tracked" {
+		t.Fatalf("state = %#v", got)
+	}
+	if inventoryReads != 1 || filteredReads != 1 {
+		t.Fatalf("inventory reads=%d filtered reads=%d", inventoryReads, filteredReads)
+	}
+}
+
 func TestManagedURLReadAcceptsDuplicateSemanticMatchesWithoutChangingID(t *testing.T) {
 	t.Parallel()
 
@@ -544,11 +594,11 @@ func TestManagedURLReadGlobalFailureRetainsState(t *testing.T) {
 			t.Fatal(err)
 		}
 		if len(body.Data) != 0 {
-			_, _ = w.Write([]byte(`{"data":[],"meta":{"pagination":{}}}`))
+			_, _ = w.Write([]byte(`{"fail":[{"errors":[{"code":"contract_error","message":"filtered-private-marker"}]}]}`))
 			return
 		}
 		w.WriteHeader(http.StatusServiceUnavailable)
-		_, _ = w.Write([]byte(`temporarily unavailable`))
+		_, _ = w.Write([]byte(`{"errors":[{"code":"temporary_error","message":"global-private-marker"}]}`))
 	}))
 	defer server.Close()
 
@@ -564,6 +614,7 @@ func TestManagedURLReadGlobalFailureRetainsState(t *testing.T) {
 	if response.State.Raw.IsNull() {
 		t.Fatal("global inventory failure removed state")
 	}
+	assertDiagnosticsExclude(t, response.Diagnostics, "filtered-private-marker", "global-private-marker", "stable-id", "old.example.invalid")
 }
 
 func TestManagedURLCreateSeedsFromUnfilteredExactID(t *testing.T) {
