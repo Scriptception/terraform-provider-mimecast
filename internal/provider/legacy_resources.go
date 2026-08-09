@@ -419,9 +419,9 @@ func (m legacyPolicyModel) validate(web bool, diags *diag.Diagnostics) {
 }
 
 type addressAlterationPolicyModel struct {
-	ID                     types.String      `tfsdk:"id"`
-	AddressAlterationSetID types.String      `tfsdk:"address_alteration_set_id"`
-	Policy                 legacyPolicyModel `tfsdk:"policy"`
+	ID                     types.String       `tfsdk:"id"`
+	AddressAlterationSetID types.String       `tfsdk:"address_alteration_set_id"`
+	Policy                 *legacyPolicyModel `tfsdk:"policy"`
 }
 
 type addressAlterationPoliciesModel struct {
@@ -504,6 +504,10 @@ func (r *addressAlterationPolicyResource) Configure(_ context.Context, req resou
 func (r *addressAlterationPolicyResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan addressAlterationPolicyModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if plan.Policy == nil {
+		resp.Diagnostics.AddError("Missing Address Alteration policy scope", "policy must be configured.")
+		return
+	}
 	plan.Policy.validate(false, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
@@ -549,6 +553,10 @@ func (r *addressAlterationPolicyResource) Read(ctx context.Context, req resource
 func (r *addressAlterationPolicyResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan addressAlterationPolicyModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if plan.Policy == nil {
+		resp.Diagnostics.AddError("Missing Address Alteration policy scope", "policy must be configured.")
+		return
+	}
 	plan.Policy.validate(false, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
@@ -592,6 +600,9 @@ func (m addressAlterationPolicyModel) toAPI(ctx context.Context, diags *diag.Dia
 func (m *addressAlterationPolicyModel) fromAPI(ctx context.Context, in client.AddressAlterationPolicy, diags *diag.Diagnostics) {
 	m.ID = types.StringValue(in.ID)
 	m.AddressAlterationSetID = stringValue(in.AddressAlterationSetID)
+	if m.Policy == nil {
+		m.Policy = &legacyPolicyModel{Comment: types.StringNull()}
+	}
 	m.Policy.fromAPI(ctx, in.Policy, diags)
 }
 
