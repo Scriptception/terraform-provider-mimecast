@@ -123,6 +123,12 @@ resource "mimecast_greylisting_policy" "engineering" {
   source excludes each entire affected record before state mapping and reports
   the number in `excluded_access_token_count`; it does not delete or change the
   remote record.
+- Mimecast managed URL filtering can omit an existing record or return a
+  different opaque ID. The provider retains the ID returned by create or used
+  for import, accepts only a full semantic match when a filtered ID differs,
+  and confirms drift or deletion against one process-scoped unfiltered
+  inventory snapshot. Fully identical duplicate records are indistinguishable;
+  successful creates and deletes invalidate the snapshot.
 - State, plans, and backend backups created with provider versions before 0.2.6
   may still contain managed URL credential values. Remove affected records from
   state and retained artefacts according to the backend's procedures, then
