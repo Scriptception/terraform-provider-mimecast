@@ -242,8 +242,10 @@ func (c *Client) ListManagedURLs(ctx context.Context, filter string, exact bool)
 			pagination["pageToken"] = pageToken
 		}
 		body := map[string]any{
-			"data": []any{req},
 			"meta": map[string]any{"pagination": pagination},
+		}
+		if filter != "" {
+			body["data"] = []any{req}
 		}
 		var out LegacyEnvelope[ManagedURL]
 		if err := c.DoRead(ctx, http.MethodPost, "/api/ttp/url/get-all-managed-urls", nil, body, &out); err != nil {

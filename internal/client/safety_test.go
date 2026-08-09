@@ -390,25 +390,30 @@ func TestManagedURLTokenPagination(t *testing.T) {
 			return
 		}
 		apiRequests++
-		var body struct {
-			Meta struct {
-				Pagination struct {
-					PageToken string `json:"pageToken"`
-				} `json:"pagination"`
-			} `json:"meta"`
-		}
+		var body map[string]json.RawMessage
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Fatal(err)
 		}
+		if _, found := body["data"]; found {
+			t.Fatal("unfiltered managed URL inventory request included data")
+		}
+		var metadata struct {
+			Pagination struct {
+				PageToken string `json:"pageToken"`
+			} `json:"pagination"`
+		}
+		if err := json.Unmarshal(body["meta"], &metadata); err != nil {
+			t.Fatal(err)
+		}
 		if apiRequests == 1 {
-			if body.Meta.Pagination.PageToken != "" {
-				t.Fatalf("first page token = %q", body.Meta.Pagination.PageToken)
+			if metadata.Pagination.PageToken != "" {
+				t.Fatal("unexpected first page token")
 			}
 			_, _ = w.Write([]byte(`{"data":[{"id":"b","url":"b.invalid"}],"meta":{"pagination":{"next":"next-token"}}}`))
 			return
 		}
-		if body.Meta.Pagination.PageToken != "next-token" {
-			t.Fatalf("second page token = %q", body.Meta.Pagination.PageToken)
+		if metadata.Pagination.PageToken != "next-token" {
+			t.Fatal("unexpected second page token")
 		}
 		_, _ = w.Write([]byte(`{"data":[{"id":"a","url":"a.invalid"}],"meta":{"pagination":{}}}`))
 	}, nil)
