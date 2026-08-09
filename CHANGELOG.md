@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.2.3 - 2026-08-09
+
+- Prevented sensitive proxy credentials and email addresses from appearing in
+  validation diagnostics or set-element diagnostic paths.
+
 ## 0.2.2 - 2026-08-09
 
 - Reconstructed managed URL resource values from the documented decomposed API
