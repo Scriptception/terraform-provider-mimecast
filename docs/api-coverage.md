@@ -100,7 +100,7 @@ Counts include cross-listed operations in every applicable product.
 | `resource.mimecast_google_workspace_directory_integration` | 4 |
 | `resource.mimecast_greylisting_policy` | 4 |
 | `resource.mimecast_journaling_service` | 4 |
-| `resource.mimecast_managed_url` | 2 |
+| `resource.mimecast_managed_url` | 3 |
 | `resource.mimecast_microsoft_365_directory_integration` | 4 |
 | `resource.mimecast_outbound_ip_addresses` | 3 |
 | `resource.mimecast_profile_group` | 4 |

@@ -117,6 +117,17 @@ resource "mimecast_greylisting_policy" "engineering" {
   write-only arguments and never enter Terraform state. Existing objects can be
   imported without those secrets; supply a new value and its version trigger
   only when intentionally rotating it.
+- Managed URLs whose decoded query parameter name is `access_token` are not a
+  supported Terraform surface. The resource refuses configuration, refresh,
+  and import with value-free diagnostics. The `mimecast_managed_urls` data
+  source excludes each entire affected record before state mapping and reports
+  the number in `excluded_access_token_count`; it does not delete or change the
+  remote record.
+- State, plans, and backend backups created with provider versions before 0.2.6
+  may still contain managed URL credential values. Remove affected records from
+  state and retained artefacts according to the backend's procedures, then
+  rotate the exposed credential. Upgrading the provider cannot purge historical
+  state or rotate a remote credential.
 - DMARC vendor associations have no published read contract. Vendor record
   updates and address-alteration set creation lack a complete provider-owned
   lifecycle, so those four mutation operations remain explicitly excluded.

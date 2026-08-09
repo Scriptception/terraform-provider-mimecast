@@ -6944,9 +6944,10 @@
       ],
       "disposition": "terraform",
       "terraform_surfaces": [
-        "data_source.mimecast_managed_urls"
+        "data_source.mimecast_managed_urls",
+        "resource.mimecast_managed_url"
       ],
-      "reason": "Typed, paginated managed URL discovery; this documented read operation uses POST.",
+      "reason": "Typed, paginated managed URL discovery plus resource read and import; records with an access_token query name are excluded from data-source state and refused by resource lifecycle paths.",
       "category": "configuration_discovery",
       "pagination": "request_body_cursor",
       "permission": {
@@ -6959,7 +6960,7 @@
         "source": "official_contract"
       },
       "contract_status": "official_contract_checked",
-      "test_status": "synthetic_contract",
+      "test_status": "synthetic_lifecycle",
       "release_blocking_gap": false
     },
     {

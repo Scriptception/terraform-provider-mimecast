@@ -3,12 +3,12 @@
 page_title: "mimecast_managed_urls Data Source - mimecast"
 subcategory: ""
 description: |-
-  Read all Targeted Threat Protection managed URLs with token pagination and ID-stable ordering.
+  Read supported Targeted Threat Protection managed URLs with token pagination and ID-stable ordering. Records whose decoded query parameter name is access_token are excluded before state mapping and counted separately.
 ---
 
 # mimecast_managed_urls (Data Source)
 
-Read all Targeted Threat Protection managed URLs with token pagination and ID-stable ordering.
+Read supported Targeted Threat Protection managed URLs with token pagination and ID-stable ordering. Records whose decoded query parameter name is access_token are excluded before state mapping and counted separately.
 
 ## Example Usage
 
@@ -21,6 +21,7 @@ data "mimecast_managed_urls" "all" {}
 
 ### Read-Only
 
+- `excluded_access_token_count` (Number) Number of whole managed URL records excluded because their decoded query parameter name is access_token.
 - `id` (String) Stable inventory ID.
 - `items` (Attributes List) (see [below for nested schema](#nestedatt--items))
 

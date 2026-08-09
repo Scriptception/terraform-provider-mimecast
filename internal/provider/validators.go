@@ -40,6 +40,23 @@ func (urlValidator) ValidateString(_ context.Context, req validator.StringReques
 	}
 }
 
+type managedURLAccessTokenValidator struct{}
+
+func (managedURLAccessTokenValidator) Description(context.Context) string {
+	return "must not contain a query parameter whose decoded name is access_token"
+}
+func (managedURLAccessTokenValidator) MarkdownDescription(ctx context.Context) string {
+	return managedURLAccessTokenValidator{}.Description(ctx)
+}
+func (managedURLAccessTokenValidator) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+	if client.ManagedURLValueHasAccessTokenQuery(req.ConfigValue.ValueString()) {
+		resp.Diagnostics.AddAttributeError(req.Path, managedURLAccessTokenSummary, managedURLAccessTokenDetail)
+	}
+}
+
 type positiveInt64Validator struct{}
 
 func (positiveInt64Validator) Description(context.Context) string { return "must be greater than zero" }

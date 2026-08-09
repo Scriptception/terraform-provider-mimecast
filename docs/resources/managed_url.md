@@ -27,7 +27,7 @@ resource "mimecast_managed_url" "blocked_domain" {
 ### Required
 
 - `action` (String) Managed URL action: `block` or `permit`.
-- `url` (String) URL or domain to manage. Do not include URL fragments.
+- `url` (String) URL or domain to manage. Do not include URL fragments or an access_token query parameter.
 
 ### Optional
 

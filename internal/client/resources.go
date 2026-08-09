@@ -272,6 +272,44 @@ func (c *Client) ListManagedURLs(ctx context.Context, filter string, exact bool)
 	return items, nil
 }
 
+// ManagedURLValueHasAccessTokenQuery reports whether a URL contains a query
+// parameter whose decoded name is exactly access_token. Query extraction is
+// deliberately independent of URL parsing so malformed URLs cannot bypass the
+// state-safety boundary. Parameter values are never decoded or inspected.
+func ManagedURLValueHasAccessTokenQuery(value string) bool {
+	queryStart := strings.IndexByte(value, '?')
+	if queryStart < 0 {
+		return false
+	}
+	fragmentStart := strings.IndexByte(value, '#')
+	if fragmentStart >= 0 && fragmentStart < queryStart {
+		return false
+	}
+	queryEnd := len(value)
+	if fragmentStart > queryStart {
+		queryEnd = fragmentStart
+	}
+	return managedURLQueryHasAccessTokenName(value[queryStart+1 : queryEnd])
+}
+
+// ManagedURLHasAccessTokenQuery checks both the composite URL and the
+// documented decomposed query-string response field.
+func ManagedURLHasAccessTokenQuery(item ManagedURL) bool {
+	return ManagedURLValueHasAccessTokenQuery(item.URL) || managedURLQueryHasAccessTokenName(item.QueryString)
+}
+
+func managedURLQueryHasAccessTokenName(query string) bool {
+	query = strings.TrimPrefix(query, "?")
+	for _, parameter := range strings.Split(query, "&") {
+		name, _, _ := strings.Cut(parameter, "=")
+		decodedName, err := url.QueryUnescape(name)
+		if err == nil && strings.EqualFold(decodedName, "access_token") {
+			return true
+		}
+	}
+	return false
+}
+
 func canonicalizeManagedURL(item *ManagedURL) {
 	item.Action = strings.ToLower(strings.TrimSpace(item.Action))
 	item.MatchType = strings.ToLower(strings.TrimSpace(item.MatchType))
