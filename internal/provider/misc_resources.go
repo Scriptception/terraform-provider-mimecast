@@ -227,19 +227,31 @@ func (m profileGroupMemberModel) memberKey() string {
 }
 
 func (r *profileGroupMemberResource) readMember(ctx context.Context, state *profileGroupMemberModel, diags *diag.Diagnostics) bool {
+	emailIdentity := state.EmailAddress.ValueString()
+	domainIdentity := state.Domain.ValueString()
+	if (emailIdentity != "") == (domainIdentity != "") {
+		diags.AddError("Invalid profile group member", "State must contain exactly one of email_address or domain.")
+		return false
+	}
+
 	items, err := r.client.ListProfileGroupMembers(ctx, state.GroupID.ValueString())
 	if err != nil {
 		diags.AddError("Unable to read profile group members", err.Error())
 		return false
 	}
 	for _, item := range items {
-		if state.EmailAddress.ValueString() != "" && strings.EqualFold(item.EmailAddress, state.EmailAddress.ValueString()) || state.Domain.ValueString() != "" && strings.EqualFold(item.Domain, state.Domain.ValueString()) {
-			state.EmailAddress = stringValue(item.EmailAddress)
-			state.Domain = stringValue(item.Domain)
+		if emailIdentity != "" && strings.EqualFold(item.EmailAddress, emailIdentity) {
+			state.Domain = types.StringNull()
 			state.Name = stringValue(item.Name)
 			state.Type = stringValue(item.Type)
 			state.Internal = boolValue(item.Internal)
-			state.ID = types.StringValue(normalizeCompositeID(state.GroupID.ValueString(), state.memberKey()))
+			return true
+		}
+		if domainIdentity != "" && strings.EqualFold(item.Domain, domainIdentity) {
+			state.EmailAddress = types.StringNull()
+			state.Name = stringValue(item.Name)
+			state.Type = stringValue(item.Type)
+			state.Internal = boolValue(item.Internal)
 			return true
 		}
 	}
