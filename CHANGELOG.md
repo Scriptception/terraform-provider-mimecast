@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.2.11 - 2026-08-10
+
+- Preserved the configured profile-group member identity when Mimecast returns
+  both email-address and domain metadata during refresh.
+
 ## 0.2.10 - 2026-08-10
 
 - Fully hydrated managed URL imports from one paginated unfiltered inventory
