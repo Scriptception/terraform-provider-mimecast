@@ -217,6 +217,7 @@ func (c *Client) CreateManagedURL(ctx context.Context, m ManagedURL) (string, er
 	if err != nil {
 		return "", err
 	}
+	c.invalidateManagedURLInventory()
 	if len(out.Data) == 0 {
 		return "", nil
 	}
@@ -224,10 +225,39 @@ func (c *Client) CreateManagedURL(ctx context.Context, m ManagedURL) (string, er
 }
 
 func (c *Client) DeleteManagedURL(ctx context.Context, id string) error {
-	return c.Do(ctx, http.MethodPost, "/api/ttp/url/delete-managed-url", nil, map[string]any{"data": []ManagedURL{{ID: id}}}, nil)
+	err := c.Do(ctx, http.MethodPost, "/api/ttp/url/delete-managed-url", nil, map[string]any{"data": []ManagedURL{{ID: id}}}, nil)
+	if err != nil && !IsNotFound(err) {
+		return err
+	}
+	c.invalidateManagedURLInventory()
+	return err
 }
 
 func (c *Client) ListManagedURLs(ctx context.Context, filter string, exact bool) ([]ManagedURL, error) {
+	if filter != "" {
+		return c.listManagedURLs(ctx, filter, exact)
+	}
+
+	// A Terraform command shares one provider client across concurrent resource
+	// refreshes. Keep one process-scoped unfiltered snapshot so hundreds of
+	// resources neither stampede nor repeatedly download the full inventory.
+	// Successful mutations invalidate the snapshot. Holding this dedicated lock
+	// across the initial fetch also makes the snapshot a single-flight operation.
+	c.managedURLInventoryMu.Lock()
+	defer c.managedURLInventoryMu.Unlock()
+	if c.managedURLInventoryValid {
+		return cloneManagedURLs(c.managedURLInventory), nil
+	}
+	items, err := c.listManagedURLs(ctx, "", false)
+	if err != nil {
+		return nil, err
+	}
+	c.managedURLInventory = cloneManagedURLs(items)
+	c.managedURLInventoryValid = true
+	return cloneManagedURLs(c.managedURLInventory), nil
+}
+
+func (c *Client) listManagedURLs(ctx context.Context, filter string, exact bool) ([]ManagedURL, error) {
 	req := map[string]any{}
 	if filter != "" {
 		req["domainOrUrl"] = filter
@@ -274,6 +304,35 @@ func (c *Client) ListManagedURLs(ctx context.Context, filter string, exact bool)
 	return items, nil
 }
 
+func (c *Client) invalidateManagedURLInventory() {
+	c.managedURLInventoryMu.Lock()
+	defer c.managedURLInventoryMu.Unlock()
+	c.managedURLInventory = nil
+	c.managedURLInventoryValid = false
+}
+
+func cloneManagedURLs(items []ManagedURL) []ManagedURL {
+	if items == nil {
+		return nil
+	}
+	cloned := make([]ManagedURL, len(items))
+	for i := range items {
+		cloned[i] = items[i]
+		cloned[i].DisableLogClick = cloneBool(items[i].DisableLogClick)
+		cloned[i].DisableRewrite = cloneBool(items[i].DisableRewrite)
+		cloned[i].DisableUserAwareness = cloneBool(items[i].DisableUserAwareness)
+	}
+	return cloned
+}
+
+func cloneBool(value *bool) *bool {
+	if value == nil {
+		return nil
+	}
+	cloned := *value
+	return &cloned
+}
+
 // ManagedURLValueHasAccessTokenQuery reports whether a URL contains a query
 // parameter whose decoded name is exactly access_token. Query extraction is
 // deliberately independent of URL parsing so malformed URLs cannot bypass the
@@ -294,10 +353,16 @@ func ManagedURLValueHasAccessTokenQuery(value string) bool {
 	return managedURLQueryHasAccessTokenName(value[queryStart+1 : queryEnd])
 }
 
-// ManagedURLHasAccessTokenQuery checks both the composite URL and the
-// documented decomposed query-string response field.
+// ManagedURLHasAccessTokenQuery checks the composite URL and every documented
+// decomposed URL component. Components are checked independently so ignored or
+// irreconstructible response shapes cannot retain a credential value.
 func ManagedURLHasAccessTokenQuery(item ManagedURL) bool {
-	return ManagedURLValueHasAccessTokenQuery(item.URL) || managedURLQueryHasAccessTokenName(item.QueryString)
+	return item.hasAccessTokenQuery ||
+		ManagedURLValueHasAccessTokenQuery(item.URL) ||
+		ManagedURLValueHasAccessTokenQuery(item.Scheme) ||
+		ManagedURLValueHasAccessTokenQuery(item.Domain) ||
+		ManagedURLValueHasAccessTokenQuery(item.Path) ||
+		managedURLQueryHasAccessTokenName(item.QueryString)
 }
 
 func managedURLQueryHasAccessTokenName(query string) bool {
@@ -313,6 +378,9 @@ func managedURLQueryHasAccessTokenName(query string) bool {
 }
 
 func canonicalizeManagedURL(item *ManagedURL) {
+	if sanitizeManagedURL(item) {
+		return
+	}
 	item.Action = strings.ToLower(strings.TrimSpace(item.Action))
 	item.MatchType = strings.ToLower(strings.TrimSpace(item.MatchType))
 	if item.URL != "" {
@@ -351,4 +419,14 @@ func canonicalizeManagedURL(item *ManagedURL) {
 		}
 		item.URL = value.String()
 	}
+	sanitizeManagedURL(item)
+}
+
+func sanitizeManagedURL(item *ManagedURL) bool {
+	if !ManagedURLHasAccessTokenQuery(*item) {
+		return false
+	}
+	id := item.ID
+	*item = ManagedURL{ID: id, hasAccessTokenQuery: true}
+	return true
 }

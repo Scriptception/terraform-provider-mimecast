@@ -26,8 +26,11 @@ type managedURLModel struct {
 type managedURLResource struct{ client *client.Client }
 
 const (
-	managedURLAccessTokenSummary = "Unsupported managed URL"
-	managedURLAccessTokenDetail  = "Managed URLs whose decoded query parameter name is access_token are intentionally unsupported because credential values must not enter Terraform configuration or state."
+	managedURLAccessTokenSummary      = "Unsupported managed URL"
+	managedURLAccessTokenDetail       = "Managed URLs whose decoded query parameter name is access_token are intentionally unsupported because credential values must not enter Terraform configuration or state."
+	managedURLUnreconstructibleDetail = "Mimecast did not return enough URL components to reconstruct the managed URL."
+	managedURLInventoryNotFoundDetail = "Mimecast did not return a managed URL matching the requested ID."
+	managedURLCreatedNotFoundDetail   = "Mimecast did not return the created ID from the managed URL inventory."
 )
 
 func NewManagedURLResource() resource.Resource { return &managedURLResource{} }
@@ -37,7 +40,7 @@ func (r *managedURLResource) Metadata(_ context.Context, req resource.MetadataRe
 func (r *managedURLResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	urlAttribute := requiredReplaceString("URL or domain to manage. Do not include URL fragments or an access_token query parameter.")
 	urlAttribute.Validators = []validator.String{managedURLAccessTokenValidator{}}
-	resp.Schema = schema.Schema{Description: "Manage a Mimecast Targeted Threat Protection managed URL.", Attributes: map[string]schema.Attribute{
+	resp.Schema = schema.Schema{Description: "Manage a Mimecast Targeted Threat Protection managed URL. Mimecast filtered reads can omit an existing record or return a different opaque ID, so the provider preserves the create/import ID and confirms absence against the unfiltered inventory.", Attributes: map[string]schema.Attribute{
 		"id":                     idAttr("Mimecast managed URL ID."),
 		"url":                    urlAttribute,
 		"action":                 requiredReplaceString("Managed URL action: `block` or `permit`."),
@@ -72,32 +75,17 @@ func (r *managedURLResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 	plan.ID = types.StringValue(id)
-	created, err := r.client.ListManagedURLs(ctx, plan.URL.ValueString(), true)
+	created, err := r.client.ListManagedURLs(ctx, "", false)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to read created managed URL", err.Error())
 		return
 	}
-	found := false
-	for _, item := range created {
-		if item.ID == id {
-			if client.ManagedURLHasAccessTokenQuery(item) {
-				resp.Diagnostics.AddError(managedURLAccessTokenSummary, managedURLAccessTokenDetail)
-				return
-			}
-			if item.URL == "" {
-				resp.Diagnostics.AddError("Unable to read created managed URL", "Mimecast did not return enough URL components to reconstruct the managed URL.")
-				return
-			}
-			if !plan.fromAPI(item) {
-				resp.Diagnostics.AddError(managedURLAccessTokenSummary, managedURLAccessTokenDetail)
-				return
-			}
-			found = true
-			break
-		}
-	}
+	item, found := managedURLByID(created, id)
 	if !found {
-		resp.Diagnostics.AddError("Unable to read created managed URL", "Mimecast did not return the created ID from the managed URL inventory.")
+		resp.Diagnostics.AddError("Unable to read created managed URL", managedURLCreatedNotFoundDetail)
+		return
+	}
+	if !hydrateManagedURLModel(&plan, item, "Unable to read created managed URL", &resp.Diagnostics) {
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
@@ -111,28 +99,37 @@ func (r *managedURLResource) Read(ctx context.Context, req resource.ReadRequest,
 	if rejectManagedURLValue(state.URL.ValueString(), &resp.Diagnostics) {
 		return
 	}
-	items, err := r.client.ListManagedURLs(ctx, state.URL.ValueString(), true)
+	storedID := state.ID.ValueString()
+	if !state.URL.IsNull() && !state.URL.IsUnknown() && state.URL.ValueString() != "" {
+		items, err := r.client.ListManagedURLs(ctx, state.URL.ValueString(), true)
+		if err != nil {
+			resp.Diagnostics.AddError("Unable to read managed URL", err.Error())
+			return
+		}
+		if item, found := managedURLByID(items, storedID); found {
+			if hydrateManagedURLModel(&state, item, "Unable to read managed URL", &resp.Diagnostics) {
+				resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+			}
+			return
+		}
+		if item, found := managedURLSemanticMatch(items, state); found {
+			if hydrateManagedURLModel(&state, item, "Unable to read managed URL", &resp.Diagnostics) {
+				resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+			}
+			return
+		}
+	}
+
+	inventory, err := r.client.ListManagedURLs(ctx, "", false)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to read managed URL", err.Error())
 		return
 	}
-	for _, item := range items {
-		if item.ID == state.ID.ValueString() {
-			if client.ManagedURLHasAccessTokenQuery(item) {
-				resp.Diagnostics.AddError(managedURLAccessTokenSummary, managedURLAccessTokenDetail)
-				return
-			}
-			if item.URL == "" {
-				resp.Diagnostics.AddError("Unable to read managed URL", "Mimecast did not return enough URL components to reconstruct the managed URL.")
-				return
-			}
-			if !state.fromAPI(item) {
-				resp.Diagnostics.AddError(managedURLAccessTokenSummary, managedURLAccessTokenDetail)
-				return
-			}
+	if item, found := managedURLByID(inventory, storedID); found {
+		if hydrateManagedURLModel(&state, item, "Unable to read managed URL", &resp.Diagnostics) {
 			resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
-			return
 		}
+		return
 	}
 	resp.State.RemoveResource(ctx)
 }
@@ -163,22 +160,50 @@ func (r *managedURLResource) ImportState(ctx context.Context, req resource.Impor
 		resp.Diagnostics.AddError("Unable to import managed URL", "Mimecast could not read the managed URL inventory.")
 		return
 	}
-	found := false
-	for _, item := range items {
-		if item.ID != req.ID {
-			continue
-		}
-		found = true
-		if client.ManagedURLHasAccessTokenQuery(item) {
-			resp.Diagnostics.AddError(managedURLAccessTokenSummary, managedURLAccessTokenDetail)
-			return
-		}
-	}
-	if found {
-		importIDPassthrough(ctx, req, resp)
+	item, found := managedURLByID(items, req.ID)
+	if !found {
+		resp.Diagnostics.AddError("Unable to import managed URL", managedURLInventoryNotFoundDetail)
 		return
 	}
-	resp.Diagnostics.AddError("Unable to import managed URL", "Mimecast did not return a managed URL matching the requested ID.")
+	state := managedURLModel{ID: types.StringValue(req.ID)}
+	if !hydrateManagedURLModel(&state, item, "Unable to import managed URL", &resp.Diagnostics) {
+		return
+	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+}
+
+func managedURLByID(items []client.ManagedURL, id string) (client.ManagedURL, bool) {
+	for _, item := range items {
+		if item.ID == id {
+			return item, true
+		}
+	}
+	return client.ManagedURL{}, false
+}
+
+func managedURLSemanticMatch(items []client.ManagedURL, state managedURLModel) (client.ManagedURL, bool) {
+	for _, item := range items {
+		if state.semanticallyMatches(item) {
+			return item, true
+		}
+	}
+	return client.ManagedURL{}, false
+}
+
+func hydrateManagedURLModel(model *managedURLModel, item client.ManagedURL, summary string, diagnostics *diag.Diagnostics) bool {
+	if client.ManagedURLHasAccessTokenQuery(item) {
+		diagnostics.AddError(managedURLAccessTokenSummary, managedURLAccessTokenDetail)
+		return false
+	}
+	if item.URL == "" {
+		diagnostics.AddError(summary, managedURLUnreconstructibleDetail)
+		return false
+	}
+	if !model.fromAPI(item) {
+		diagnostics.AddError(managedURLAccessTokenSummary, managedURLAccessTokenDetail)
+		return false
+	}
+	return true
 }
 
 func rejectManagedURLValue(value string, diagnostics *diag.Diagnostics) bool {
@@ -196,7 +221,9 @@ func (m *managedURLModel) fromAPI(in client.ManagedURL) bool {
 	if client.ManagedURLHasAccessTokenQuery(in) {
 		return false
 	}
-	m.ID = stringValue(in.ID)
+	if m.ID.IsNull() || m.ID.IsUnknown() || m.ID.ValueString() == "" {
+		m.ID = stringValue(in.ID)
+	}
 	m.URL = stringValue(in.URL)
 	m.Action = stringValue(in.Action)
 	m.MatchType = stringValue(in.MatchType)
@@ -205,4 +232,21 @@ func (m *managedURLModel) fromAPI(in client.ManagedURL) bool {
 	m.DisableRewrite = boolValue(in.DisableRewrite)
 	m.DisableUserAwareness = boolValue(in.DisableUserAwareness)
 	return true
+}
+
+func (m managedURLModel) semanticallyMatches(in client.ManagedURL) bool {
+	if in.URL == "" || client.ManagedURLHasAccessTokenQuery(in) {
+		return false
+	}
+	var candidate managedURLModel
+	if !candidate.fromAPI(in) {
+		return false
+	}
+	return m.URL.Equal(candidate.URL) &&
+		m.Action.Equal(candidate.Action) &&
+		m.MatchType.Equal(candidate.MatchType) &&
+		m.Comment.Equal(candidate.Comment) &&
+		m.DisableLogClick.Equal(candidate.DisableLogClick) &&
+		m.DisableRewrite.Equal(candidate.DisableRewrite) &&
+		m.DisableUserAwareness.Equal(candidate.DisableUserAwareness)
 }

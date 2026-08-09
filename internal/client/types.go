@@ -95,6 +95,7 @@ type ManagedURL struct {
 	Port                 int64  `json:"-"`
 	Path                 string `json:"-"`
 	QueryString          string `json:"-"`
+	hasAccessTokenQuery  bool
 }
 
 func (m *ManagedURL) UnmarshalJSON(data []byte) error {

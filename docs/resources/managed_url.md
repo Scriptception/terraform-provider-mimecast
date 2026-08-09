@@ -3,12 +3,12 @@
 page_title: "mimecast_managed_url Resource - mimecast"
 subcategory: ""
 description: |-
-  Manage a Mimecast Targeted Threat Protection managed URL.
+  Manage a Mimecast Targeted Threat Protection managed URL. Mimecast filtered reads can omit an existing record or return a different opaque ID, so the provider preserves the create/import ID and confirms absence against the unfiltered inventory.
 ---
 
 # mimecast_managed_url (Resource)
 
-Manage a Mimecast Targeted Threat Protection managed URL.
+Manage a Mimecast Targeted Threat Protection managed URL. Mimecast filtered reads can omit an existing record or return a different opaque ID, so the provider preserves the create/import ID and confirms absence against the unfiltered inventory.
 
 ## Example Usage
 

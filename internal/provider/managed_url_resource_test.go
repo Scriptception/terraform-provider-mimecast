@@ -149,6 +149,27 @@ func TestManagedURLImportRejectsUnsafeDecomposedRecordWithoutWritingState(t *tes
 			_, _ = w.Write([]byte(`{"access_token":"token","expires_in":3600}`))
 			return
 		}
+		var body struct {
+			Data []json.RawMessage `json:"data"`
+			Meta struct {
+				Pagination struct {
+					PageToken string `json:"pageToken"`
+				} `json:"pagination"`
+			} `json:"meta"`
+		}
+		if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		if len(body.Data) != 0 {
+			t.Fatal("unfiltered privacy import included a filter")
+		}
+		if body.Meta.Pagination.PageToken == "" {
+			_, _ = w.Write([]byte(`{"data":[{"id":"other","url":"other.invalid","matchType":"domain","action":"block"}],"meta":{"pagination":{"next":"privacy-page-2"}}}`))
+			return
+		}
+		if body.Meta.Pagination.PageToken != "privacy-page-2" {
+			t.Fatalf("unexpected page token %q", body.Meta.Pagination.PageToken)
+		}
 		_, _ = w.Write([]byte(`{"data":[{"id":"import-id-marker","scheme":"https","port":-1,"path":"/import-path-marker","queryString":"ACCESS_TOKEN=import-secret-marker","matchType":"explicit","action":"block","comment":"import-comment-marker"}],"meta":{"pagination":{}}}`))
 	}))
 	defer server.Close()
@@ -167,28 +188,44 @@ func TestManagedURLImportRejectsUnsafeDecomposedRecordWithoutWritingState(t *tes
 func TestManagedURLImportAndReadReconstructsURL(t *testing.T) {
 	t.Parallel()
 
+	inventoryPages := 0
+	filteredReads := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		switch request.URL.Path {
 		case "/oauth/token":
 			_, _ = w.Write([]byte(`{"access_token":"token","expires_in":3600}`))
 		case "/api/ttp/url/get-all-managed-urls":
-			var body map[string]json.RawMessage
+			var body struct {
+				Data []struct {
+					DomainOrURL string `json:"domainOrUrl"`
+					ExactMatch  bool   `json:"exactMatch"`
+				} `json:"data"`
+				Meta struct {
+					Pagination struct {
+						PageToken string `json:"pageToken"`
+					} `json:"pagination"`
+				} `json:"meta"`
+			}
 			if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
 				t.Fatal(err)
 			}
-			if _, found := body["data"]; found {
-				t.Fatal("unfiltered import read included data")
+			if len(body.Data) != 0 {
+				filteredReads++
+				if len(body.Data) != 1 || body.Data[0].DomainOrURL != "https://example.invalid:8443/login?return=%2F" || !body.Data[0].ExactMatch {
+					t.Fatalf("filtered request = %#v", body.Data)
+				}
+				_, _ = w.Write([]byte(`{"data":[{"id":"rotated-response-id","scheme":"https","domain":"example.invalid","port":8443,"path":"/login","queryString":"return=%2F","matchType":"EXPLICIT","action":"BLOCK","comment":"test","disableLogClick":true,"disableRewrite":false,"disableUserAwareness":true}],"meta":{"pagination":{}}}`))
+				return
 			}
-			var metadata struct {
-				Pagination map[string]any `json:"pagination"`
+			inventoryPages++
+			switch body.Meta.Pagination.PageToken {
+			case "":
+				_, _ = w.Write([]byte(`{"data":[{"id":"unrelated","url":"unrelated.invalid","matchType":"domain","action":"block"}],"meta":{"pagination":{"next":"import-page-2"}}}`))
+			case "import-page-2":
+				_, _ = w.Write([]byte(`{"data":[{"id":"managed-1","scheme":"https","domain":"example.invalid","port":8443,"path":"/login","queryString":"return=%2F","matchType":"EXPLICIT","action":"BLOCK","comment":"test","disableLogClick":true,"disableRewrite":false,"disableUserAwareness":true}],"meta":{"pagination":{}}}`))
+			default:
+				t.Fatalf("unexpected page token %q", body.Meta.Pagination.PageToken)
 			}
-			if err := json.Unmarshal(body["meta"], &metadata); err != nil {
-				t.Fatal(err)
-			}
-			if metadata.Pagination == nil {
-				t.Fatal("unfiltered import read did not use metadata-only pagination")
-			}
-			_, _ = w.Write([]byte(`{"data":[{"id":"managed-1","scheme":"https","domain":"example.invalid","port":8443,"path":"/login","queryString":"return=%2F","matchType":"EXPLICIT","action":"BLOCK","comment":"test","disableLogClick":true,"disableRewrite":false,"disableUserAwareness":true}],"meta":{"pagination":{}}}`))
 		default:
 			t.Fatalf("unexpected path %s", request.URL.Path)
 		}
@@ -213,8 +250,11 @@ func TestManagedURLImportAndReadReconstructsURL(t *testing.T) {
 	if importResponse.Diagnostics.HasError() {
 		t.Fatalf("import state diagnostics: %v", importResponse.Diagnostics)
 	}
-	if imported.ID.ValueString() != "managed-1" || !imported.URL.IsNull() {
+	if imported.ID.ValueString() != "managed-1" || imported.URL.ValueString() != "https://example.invalid:8443/login?return=%2F" || imported.Action.ValueString() != "block" || imported.MatchType.ValueString() != "explicit" {
 		t.Fatalf("imported state = %#v", imported)
+	}
+	if !imported.DisableLogClick.ValueBool() || imported.DisableRewrite.ValueBool() || !imported.DisableUserAwareness.ValueBool() {
+		t.Fatalf("imported controls = %#v", imported)
 	}
 
 	readResponse := resource.ReadResponse{State: importResponse.State}
@@ -233,9 +273,12 @@ func TestManagedURLImportAndReadReconstructsURL(t *testing.T) {
 	if !got.DisableLogClick.ValueBool() || got.DisableRewrite.ValueBool() || !got.DisableUserAwareness.ValueBool() {
 		t.Fatalf("read controls = %#v", got)
 	}
+	if inventoryPages != 2 || filteredReads != 1 {
+		t.Fatalf("inventory pages=%d filtered reads=%d", inventoryPages, filteredReads)
+	}
 }
 
-func TestManagedURLImportReadRejectsIrrecoverableURLWithoutExposingResponse(t *testing.T) {
+func TestManagedURLImportRejectsIrrecoverableURLWithoutExposingResponse(t *testing.T) {
 	t.Parallel()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
@@ -255,20 +298,349 @@ func TestManagedURLImportReadRejectsIrrecoverableURLWithoutExposingResponse(t *t
 	state := emptyManagedURLState(managedURLSchema(t, instance))
 	importResponse := resource.ImportStateResponse{State: state}
 	instance.ImportState(context.Background(), resource.ImportStateRequest{ID: "managed-invalid"}, &importResponse)
+	if !importResponse.Diagnostics.HasError() {
+		t.Fatal("expected irrecoverable managed URL import error")
+	}
+	diagnostic := importResponse.Diagnostics.Errors()[0]
+	if diagnostic.Detail() != managedURLUnreconstructibleDetail {
+		t.Fatalf("diagnostic detail = %q", diagnostic.Detail())
+	}
+	for _, value := range []string{"managed-invalid", "marker-path", "marker-comment"} {
+		if strings.Contains(diagnostic.Detail(), value) {
+			t.Fatalf("diagnostic exposed response content: %s", diagnostic.Detail())
+		}
+	}
+	if !importResponse.State.Raw.IsNull() {
+		t.Fatal("irreconstructible imported record must not be written to state")
+	}
+}
+
+func TestManagedURLImportThenFilteredMissUsesGlobalSnapshot(t *testing.T) {
+	t.Parallel()
+
+	inventoryReads := 0
+	filteredReads := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if request.URL.Path == "/oauth/token" {
+			_, _ = w.Write([]byte(`{"access_token":"token","expires_in":3600}`))
+			return
+		}
+		var body struct {
+			Data []json.RawMessage `json:"data"`
+		}
+		if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		if len(body.Data) == 0 {
+			inventoryReads++
+			_, _ = w.Write([]byte(`{"data":[{"id":"stable-domain-id","url":"tracked.example.invalid","matchType":"domain","action":"block","comment":"tracked"}],"meta":{"pagination":{}}}`))
+			return
+		}
+		filteredReads++
+		_, _ = w.Write([]byte(`{"data":[],"meta":{"pagination":{}}}`))
+	}))
+	defer server.Close()
+
+	instance := &managedURLResource{client: managedURLTestClient(t, server)}
+	resourceSchema := managedURLSchema(t, instance)
+	importResponse := resource.ImportStateResponse{State: emptyManagedURLState(resourceSchema)}
+	instance.ImportState(context.Background(), resource.ImportStateRequest{ID: "stable-domain-id"}, &importResponse)
 	if importResponse.Diagnostics.HasError() {
 		t.Fatalf("import diagnostics: %v", importResponse.Diagnostics)
 	}
 
 	readResponse := resource.ReadResponse{State: importResponse.State}
 	instance.Read(context.Background(), resource.ReadRequest{State: importResponse.State}, &readResponse)
-	if !readResponse.Diagnostics.HasError() {
-		t.Fatal("expected irrecoverable managed URL read error")
+	if readResponse.Diagnostics.HasError() {
+		t.Fatalf("read diagnostics: %v", readResponse.Diagnostics)
 	}
-	diagnostic := readResponse.Diagnostics.Errors()[0]
-	for _, value := range []string{"managed-invalid", "marker-path", "marker-comment"} {
-		if strings.Contains(diagnostic.Detail(), value) {
-			t.Fatalf("diagnostic exposed response content: %s", diagnostic.Detail())
+	var got managedURLModel
+	readResponse.Diagnostics.Append(readResponse.State.Get(context.Background(), &got)...)
+	if got.ID.ValueString() != "stable-domain-id" || got.URL.ValueString() != "tracked.example.invalid" || got.Comment.ValueString() != "tracked" {
+		t.Fatalf("state = %#v", got)
+	}
+	if inventoryReads != 1 || filteredReads != 1 {
+		t.Fatalf("inventory reads=%d filtered reads=%d", inventoryReads, filteredReads)
+	}
+}
+
+func TestManagedURLReadAcceptsDuplicateSemanticMatchesWithoutChangingID(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if request.URL.Path == "/oauth/token" {
+			_, _ = w.Write([]byte(`{"access_token":"token","expires_in":3600}`))
+			return
 		}
+		var body struct {
+			Data []json.RawMessage `json:"data"`
+		}
+		if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		if len(body.Data) == 0 {
+			t.Fatal("semantic duplicate match unexpectedly used global inventory")
+		}
+		_, _ = w.Write([]byte(`{"data":[
+			{"id":"rotated-a","url":"https://duplicate.example.invalid/path","matchType":"explicit","action":"block","comment":"same","disableLogClick":true,"disableRewrite":false,"disableUserAwareness":true},
+			{"id":"rotated-b","url":"https://duplicate.example.invalid/path","matchType":"explicit","action":"block","comment":"same","disableLogClick":true,"disableRewrite":false,"disableUserAwareness":true}
+		],"meta":{"pagination":{}}}`))
+	}))
+	defer server.Close()
+
+	instance := &managedURLResource{client: managedURLTestClient(t, server)}
+	resourceSchema := managedURLSchema(t, instance)
+	model := completeManagedURLTestModel("stable-id", "https://duplicate.example.invalid/path")
+	state := managedURLState(t, resourceSchema, model)
+	response := resource.ReadResponse{State: state}
+	instance.Read(context.Background(), resource.ReadRequest{State: state}, &response)
+	if response.Diagnostics.HasError() {
+		t.Fatalf("read diagnostics: %v", response.Diagnostics)
+	}
+	var got managedURLModel
+	response.Diagnostics.Append(response.State.Get(context.Background(), &got)...)
+	if got.ID.ValueString() != "stable-id" || !got.semanticallyMatches(model.toAPI()) {
+		t.Fatalf("state = %#v", got)
+	}
+}
+
+func TestManagedURLReadPrefersExactIDOverEarlierSemanticDuplicate(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if request.URL.Path == "/oauth/token" {
+			_, _ = w.Write([]byte(`{"access_token":"token","expires_in":3600}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"data":[
+			{"id":"rotated-semantic","url":"https://old.example.invalid/path","matchType":"explicit","action":"block","comment":"same","disableLogClick":true,"disableRewrite":false,"disableUserAwareness":true},
+			{"id":"stable-id","url":"https://changed.example.invalid/path","matchType":"explicit","action":"permit","comment":"changed","disableLogClick":false,"disableRewrite":true,"disableUserAwareness":false}
+		],"meta":{"pagination":{}}}`))
+	}))
+	defer server.Close()
+
+	instance := &managedURLResource{client: managedURLTestClient(t, server)}
+	resourceSchema := managedURLSchema(t, instance)
+	state := managedURLState(t, resourceSchema, completeManagedURLTestModel("stable-id", "https://old.example.invalid/path"))
+	response := resource.ReadResponse{State: state}
+	instance.Read(context.Background(), resource.ReadRequest{State: state}, &response)
+	if response.Diagnostics.HasError() {
+		t.Fatalf("read diagnostics: %v", response.Diagnostics)
+	}
+	var got managedURLModel
+	response.Diagnostics.Append(response.State.Get(context.Background(), &got)...)
+	if got.ID.ValueString() != "stable-id" || got.URL.ValueString() != "https://changed.example.invalid/path" || got.Action.ValueString() != "permit" || got.Comment.ValueString() != "changed" {
+		t.Fatalf("state = %#v", got)
+	}
+	if got.DisableLogClick.ValueBool() || !got.DisableRewrite.ValueBool() || got.DisableUserAwareness.ValueBool() {
+		t.Fatalf("controls = %#v", got)
+	}
+}
+
+func TestManagedURLReadRefreshesChangedRecordFromGlobalFallback(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if request.URL.Path == "/oauth/token" {
+			_, _ = w.Write([]byte(`{"access_token":"token","expires_in":3600}`))
+			return
+		}
+		var body struct {
+			Data []json.RawMessage `json:"data"`
+		}
+		if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		if len(body.Data) != 0 {
+			_, _ = w.Write([]byte(`{"data":[],"meta":{"pagination":{}}}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"data":[{"id":"stable-id","url":"changed.example.invalid","matchType":"domain","action":"permit","comment":"changed remotely","disableLogClick":false,"disableRewrite":true,"disableUserAwareness":false}],"meta":{"pagination":{}}}`))
+	}))
+	defer server.Close()
+
+	instance := &managedURLResource{client: managedURLTestClient(t, server)}
+	resourceSchema := managedURLSchema(t, instance)
+	state := managedURLState(t, resourceSchema, completeManagedURLTestModel("stable-id", "https://old.example.invalid/path"))
+	response := resource.ReadResponse{State: state}
+	instance.Read(context.Background(), resource.ReadRequest{State: state}, &response)
+	if response.Diagnostics.HasError() {
+		t.Fatalf("read diagnostics: %v", response.Diagnostics)
+	}
+	var got managedURLModel
+	response.Diagnostics.Append(response.State.Get(context.Background(), &got)...)
+	if got.ID.ValueString() != "stable-id" || got.URL.ValueString() != "changed.example.invalid" || got.MatchType.ValueString() != "domain" || got.Action.ValueString() != "permit" || got.Comment.ValueString() != "changed remotely" {
+		t.Fatalf("state = %#v", got)
+	}
+	if got.DisableLogClick.ValueBool() || !got.DisableRewrite.ValueBool() || got.DisableUserAwareness.ValueBool() {
+		t.Fatalf("controls = %#v", got)
+	}
+}
+
+func TestManagedURLReadRemovesOnlyAfterPaginatedGlobalAbsence(t *testing.T) {
+	t.Parallel()
+
+	globalPages := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if request.URL.Path == "/oauth/token" {
+			_, _ = w.Write([]byte(`{"access_token":"token","expires_in":3600}`))
+			return
+		}
+		var body struct {
+			Data []json.RawMessage `json:"data"`
+			Meta struct {
+				Pagination struct {
+					PageToken string `json:"pageToken"`
+				} `json:"pagination"`
+			} `json:"meta"`
+		}
+		if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		if len(body.Data) != 0 {
+			_, _ = w.Write([]byte(`{"data":[],"meta":{"pagination":{}}}`))
+			return
+		}
+		globalPages++
+		if body.Meta.Pagination.PageToken == "" {
+			_, _ = w.Write([]byte(`{"data":[{"id":"other-a","url":"a.invalid","matchType":"domain","action":"block"}],"meta":{"pagination":{"next":"delete-page-2"}}}`))
+			return
+		}
+		if body.Meta.Pagination.PageToken != "delete-page-2" {
+			t.Fatalf("unexpected page token %q", body.Meta.Pagination.PageToken)
+		}
+		_, _ = w.Write([]byte(`{"data":[{"id":"other-b","url":"b.invalid","matchType":"domain","action":"block"}],"meta":{"pagination":{}}}`))
+	}))
+	defer server.Close()
+
+	instance := &managedURLResource{client: managedURLTestClient(t, server)}
+	resourceSchema := managedURLSchema(t, instance)
+	state := managedURLState(t, resourceSchema, completeManagedURLTestModel("deleted-id", "https://old.example.invalid/path"))
+	response := resource.ReadResponse{State: state}
+	instance.Read(context.Background(), resource.ReadRequest{State: state}, &response)
+	if response.Diagnostics.HasError() {
+		t.Fatalf("read diagnostics: %v", response.Diagnostics)
+	}
+	if !response.State.Raw.IsNull() {
+		t.Fatal("globally absent managed URL was not removed")
+	}
+	if globalPages != 2 {
+		t.Fatalf("global pages = %d", globalPages)
+	}
+}
+
+func TestManagedURLReadGlobalFailureRetainsState(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if request.URL.Path == "/oauth/token" {
+			_, _ = w.Write([]byte(`{"access_token":"token","expires_in":3600}`))
+			return
+		}
+		var body struct {
+			Data []json.RawMessage `json:"data"`
+		}
+		if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		if len(body.Data) != 0 {
+			_, _ = w.Write([]byte(`{"data":[],"meta":{"pagination":{}}}`))
+			return
+		}
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = w.Write([]byte(`temporarily unavailable`))
+	}))
+	defer server.Close()
+
+	instance := &managedURLResource{client: managedURLTestClient(t, server)}
+	resourceSchema := managedURLSchema(t, instance)
+	model := completeManagedURLTestModel("stable-id", "https://old.example.invalid/path")
+	state := managedURLState(t, resourceSchema, model)
+	response := resource.ReadResponse{State: state}
+	instance.Read(context.Background(), resource.ReadRequest{State: state}, &response)
+	if !response.Diagnostics.HasError() {
+		t.Fatal("expected global inventory failure")
+	}
+	if response.State.Raw.IsNull() {
+		t.Fatal("global inventory failure removed state")
+	}
+}
+
+func TestManagedURLCreateSeedsFromUnfilteredExactID(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		switch request.URL.Path {
+		case "/oauth/token":
+			_, _ = w.Write([]byte(`{"access_token":"token","expires_in":3600}`))
+		case "/api/ttp/url/create-managed-url":
+			_, _ = w.Write([]byte(`{"data":[{"id":"created-stable-id"}]}`))
+		case "/api/ttp/url/get-all-managed-urls":
+			var body struct {
+				Data []json.RawMessage `json:"data"`
+			}
+			if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+				t.Fatal(err)
+			}
+			if len(body.Data) != 0 {
+				t.Fatal("created managed URL was read with a filter")
+			}
+			_, _ = w.Write([]byte(`{"data":[{"id":"created-stable-id","url":"created.example.invalid","matchType":"domain","action":"block","comment":"created"}],"meta":{"pagination":{}}}`))
+		default:
+			t.Fatalf("unexpected path %s", request.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	instance := &managedURLResource{client: managedURLTestClient(t, server)}
+	resourceSchema := managedURLSchema(t, instance)
+	plan := managedURLTestModel("created.example.invalid")
+	plan.MatchType = types.StringValue("domain")
+	response := resource.CreateResponse{State: emptyManagedURLState(resourceSchema)}
+	instance.Create(context.Background(), resource.CreateRequest{Plan: managedURLPlan(t, resourceSchema, plan)}, &response)
+	if response.Diagnostics.HasError() {
+		t.Fatalf("create diagnostics: %v", response.Diagnostics)
+	}
+	var got managedURLModel
+	response.Diagnostics.Append(response.State.Get(context.Background(), &got)...)
+	if got.ID.ValueString() != "created-stable-id" || got.URL.ValueString() != "created.example.invalid" || got.Comment.ValueString() != "created" {
+		t.Fatalf("created state = %#v", got)
+	}
+}
+
+func TestManagedURLSemanticMatchCoversAllFields(t *testing.T) {
+	t.Parallel()
+
+	trueValue := true
+	falseValue := false
+	base := completeManagedURLTestModel("stable-id", "https://example.invalid/path")
+	remote := base.toAPI()
+	remote.ID = "rotated-id"
+	if !base.semanticallyMatches(remote) {
+		t.Fatal("identical managed URL did not semantically match")
+	}
+
+	tests := []struct {
+		name   string
+		mutate func(*client.ManagedURL)
+	}{
+		{name: "url", mutate: func(item *client.ManagedURL) { item.URL = "https://other.invalid/path" }},
+		{name: "action", mutate: func(item *client.ManagedURL) { item.Action = "permit" }},
+		{name: "match type", mutate: func(item *client.ManagedURL) { item.MatchType = "domain" }},
+		{name: "comment", mutate: func(item *client.ManagedURL) { item.Comment = "other" }},
+		{name: "disable log click", mutate: func(item *client.ManagedURL) { item.DisableLogClick = &falseValue }},
+		{name: "disable rewrite", mutate: func(item *client.ManagedURL) { item.DisableRewrite = &trueValue }},
+		{name: "disable user awareness", mutate: func(item *client.ManagedURL) { item.DisableUserAwareness = &falseValue }},
+		{name: "nil differs from false", mutate: func(item *client.ManagedURL) { item.DisableRewrite = nil }},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			candidate := remote
+			test.mutate(&candidate)
+			if base.semanticallyMatches(candidate) {
+				t.Fatal("different managed URL semantically matched")
+			}
+		})
 	}
 }
 
@@ -299,6 +671,19 @@ func managedURLTestModel(url string) managedURLModel {
 		DisableLogClick:      types.BoolNull(),
 		DisableRewrite:       types.BoolNull(),
 		DisableUserAwareness: types.BoolNull(),
+	}
+}
+
+func completeManagedURLTestModel(id, url string) managedURLModel {
+	return managedURLModel{
+		ID:                   types.StringValue(id),
+		URL:                  types.StringValue(url),
+		Action:               types.StringValue("block"),
+		MatchType:            types.StringValue("explicit"),
+		Comment:              types.StringValue("same"),
+		DisableLogClick:      types.BoolValue(true),
+		DisableRewrite:       types.BoolValue(false),
+		DisableUserAwareness: types.BoolValue(true),
 	}
 }
 

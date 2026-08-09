@@ -62,6 +62,10 @@ type Client struct {
 	tokenMu     sync.Mutex
 	accessToken string
 	tokenExpiry time.Time
+
+	managedURLInventoryMu    sync.Mutex
+	managedURLInventory      []ManagedURL
+	managedURLInventoryValid bool
 }
 
 type serviceTransport struct {

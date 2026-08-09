@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 0.2.10 - 2026-08-10
+
+- Fully hydrated managed URL imports from one paginated unfiltered inventory
+  snapshot instead of leaving required configuration unknown until refresh.
+- Preserved the create/import managed URL ID when filtered reads omit the
+  record or return a different opaque ID for semantically identical content.
+- Added exact-ID global fallback for managed URL drift and deletion detection,
+  backed by a thread-safe process snapshot that is invalidated after successful
+  create and delete operations.
+
 ## 0.2.9 - 2026-08-10
 
 - Preserved configured Address Alteration Set handles when Mimecast returns a
