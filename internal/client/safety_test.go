@@ -242,6 +242,110 @@ func TestServiceTransportBlocksRemotePlaintextRedirects(t *testing.T) {
 	}
 }
 
+func TestServiceTransportBlocksUnconfiguredLoopbackRedirects(t *testing.T) {
+	const secretMarker = "redirect-secret-marker"
+	for _, test := range []struct {
+		name    string
+		handler func(http.ResponseWriter, *http.Request, string)
+		leaked  func(*http.Request) bool
+	}{
+		{
+			name: "OAuth request",
+			handler: func(w http.ResponseWriter, r *http.Request, target string) {
+				if r.URL.Path == "/oauth/token" {
+					http.Redirect(w, r, target+"/oauth/token", http.StatusTemporaryRedirect)
+					return
+				}
+				w.WriteHeader(http.StatusNoContent)
+			},
+			leaked: func(r *http.Request) bool {
+				return r.FormValue("client_secret") == secretMarker
+			},
+		},
+		{
+			name: "bearer request",
+			handler: func(w http.ResponseWriter, r *http.Request, target string) {
+				if r.URL.Path == "/oauth/token" {
+					tokenFixture(w)
+					return
+				}
+				http.Redirect(w, r, target+"/identity/whoami", http.StatusTemporaryRedirect)
+			},
+			leaked: func(r *http.Request) bool {
+				return r.Header.Get("Authorization") == "Bearer token"
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			leaked := false
+			loopback := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				leaked = test.leaked(r)
+				http.Error(w, "unexpected request", http.StatusBadRequest)
+			}))
+			defer loopback.Close()
+
+			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				test.handler(w, r, loopback.URL)
+			}))
+			defer server.Close()
+			apiClient, err := New(Config{
+				BaseURL:      server.URL,
+				TokenURL:     server.URL + "/oauth/token",
+				ClientID:     "id",
+				ClientSecret: secretMarker,
+				Insecure:     true,
+				MaxRetries:   0,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			err = apiClient.Do(context.Background(), http.MethodGet, "/identity/whoami", nil, nil, nil)
+			if err == nil || !strings.Contains(err.Error(), "blocked non-HTTPS") {
+				t.Fatalf("unconfigured loopback redirect error = %v", err)
+			}
+			if leaked {
+				t.Fatal("sensitive request data reached an unconfigured loopback origin")
+			}
+		})
+	}
+}
+
+func TestServiceTransportRestrictsLoopbackHTTPToConfiguredOrigins(t *testing.T) {
+	targetRequests := 0
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		targetRequests++
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer target.Close()
+
+	source := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/oauth/token" {
+			tokenFixture(w)
+			return
+		}
+		http.Redirect(w, r, target.URL+"/identity/whoami", http.StatusTemporaryRedirect)
+	}))
+	defer source.Close()
+
+	apiClient, err := New(Config{
+		BaseURL:      source.URL,
+		TokenURL:     source.URL + "/oauth/token",
+		ClientID:     "id",
+		ClientSecret: "secret",
+		MaxRetries:   0,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = apiClient.Do(context.Background(), http.MethodGet, "/identity/whoami", nil, nil, nil)
+	if err == nil || !strings.Contains(err.Error(), "blocked non-HTTPS") {
+		t.Fatalf("unconfigured loopback origin error = %v", err)
+	}
+	if targetRequests != 0 {
+		t.Fatalf("target requests = %d, want zero", targetRequests)
+	}
+}
+
 func TestProxyRoutesOAuthAndAPIWithoutLeakingProxyOrBody(t *testing.T) {
 	paths := make([]string, 0, 2)
 	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

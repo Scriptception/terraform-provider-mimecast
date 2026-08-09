@@ -65,13 +65,17 @@ type Client struct {
 }
 
 type serviceTransport struct {
-	base              http.RoundTripper
-	allowLoopbackHTTP bool
+	base               http.RoundTripper
+	allowedHTTPOrigins map[string]struct{}
 }
 
 func (t serviceTransport) RoundTrip(request *http.Request) (*http.Response, error) {
-	if request.URL.Scheme != "https" && (request.URL.Scheme != "http" || !t.allowLoopbackHTTP || !isLoopbackHost(request.URL.Hostname())) {
-		return nil, errors.New("mimecast: blocked non-HTTPS request to a non-loopback service endpoint")
+	if request.URL.Scheme == "https" {
+		return t.base.RoundTrip(request)
+	}
+	origin, valid := loopbackHTTPOrigin(request.URL)
+	if _, allowed := t.allowedHTTPOrigins[origin]; !valid || !allowed {
+		return nil, errors.New("mimecast: blocked non-HTTPS request outside configured loopback service origins")
 	}
 	return t.base.RoundTrip(request)
 }
@@ -172,8 +176,13 @@ func New(cfg Config) (*Client, error) {
 		}
 		transport.Proxy = http.ProxyURL(proxyURL)
 	}
-	allowLoopbackHTTP := proxyURL == nil || isLoopbackHost(proxyURL.Hostname())
-	if !allowLoopbackHTTP && (u.Scheme == "http" || tokenEndpoint.Scheme == "http") {
+	allowedHTTPOrigins := make(map[string]struct{}, 2)
+	for _, endpoint := range []*url.URL{u, tokenEndpoint} {
+		if origin, ok := loopbackHTTPOrigin(endpoint); ok {
+			allowedHTTPOrigins[origin] = struct{}{}
+		}
+	}
+	if len(allowedHTTPOrigins) > 0 && proxyURL != nil && !isLoopbackHost(proxyURL.Hostname()) {
 		return nil, errors.New("mimecast: loopback HTTP service endpoints cannot use a non-loopback proxy")
 	}
 	if cfg.Insecure {
@@ -182,7 +191,7 @@ func New(cfg Config) (*Client, error) {
 	ua := firstNonEmpty(cfg.UserAgent, "terraform-provider-mimecast")
 	return &Client{
 		baseURL: u, tokenURL: tokenURL, clientID: cfg.ClientID, clientSecret: cfg.ClientSecret, tokenAuthMethod: authMethod,
-		scopes: cfg.Scopes, httpClient: &http.Client{Timeout: timeout, Transport: serviceTransport{base: transport, allowLoopbackHTTP: allowLoopbackHTTP}}, userAgent: ua, maxRetries: retries, pageSize: pageSize,
+		scopes: cfg.Scopes, httpClient: &http.Client{Timeout: timeout, Transport: serviceTransport{base: transport, allowedHTTPOrigins: allowedHTTPOrigins}}, userAgent: ua, maxRetries: retries, pageSize: pageSize,
 		readOnly: cfg.ReadOnly,
 	}, nil
 }
@@ -213,6 +222,21 @@ func parseServiceURL(value, name string) (*url.URL, error) {
 func isLoopbackHost(host string) bool {
 	ip := net.ParseIP(host)
 	return ip != nil && ip.IsLoopback()
+}
+
+func loopbackHTTPOrigin(parsed *url.URL) (string, bool) {
+	if parsed == nil || parsed.Scheme != "http" {
+		return "", false
+	}
+	ip := net.ParseIP(parsed.Hostname())
+	if ip == nil || !ip.IsLoopback() {
+		return "", false
+	}
+	port := parsed.Port()
+	if port == "" {
+		port = "80"
+	}
+	return "http://" + net.JoinHostPort(ip.String(), port), true
 }
 
 type tokenResponse struct {
