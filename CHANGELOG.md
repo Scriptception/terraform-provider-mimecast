@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.2.12 - 2026-08-10
+
+- Hydrated profile-group member notes during import and refresh so configured
+  notes remain stable after import.
+
 ## 0.2.11 - 2026-08-10
 
 - Preserved the configured profile-group member identity when Mimecast returns

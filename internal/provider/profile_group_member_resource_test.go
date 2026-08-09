@@ -24,9 +24,11 @@ func TestProfileGroupMemberImportAndReadPreservesIdentityBranch(t *testing.T) {
 		wantDomain      string
 		wantName        string
 		wantType        string
+		wantNote        string
 		wantInternal    bool
 		wantEmailIsNull bool
 		wantDomainNull  bool
+		wantNoteNull    bool
 	}{
 		{
 			name:            "email address",
@@ -35,6 +37,7 @@ func TestProfileGroupMemberImportAndReadPreservesIdentityBranch(t *testing.T) {
 			wantEmail:       "Member@Example.invalid",
 			wantName:        "Email member",
 			wantType:        "created_manually",
+			wantNote:        "remote note",
 			wantInternal:    true,
 			wantDomainNull:  true,
 			wantEmailIsNull: false,
@@ -46,9 +49,22 @@ func TestProfileGroupMemberImportAndReadPreservesIdentityBranch(t *testing.T) {
 			wantDomain:      "Example.invalid",
 			wantName:        "Domain member",
 			wantType:        "created_by_import",
+			wantNote:        "remote note",
 			wantInternal:    false,
 			wantEmailIsNull: true,
 			wantDomainNull:  false,
+		},
+		{
+			name:            "empty note",
+			importID:        "group-1/empty-note@example.invalid",
+			response:        `{"groupMembers":[{"emailAddress":"empty-note@example.invalid","domain":"example.invalid","name":"Member without note","internal":true,"type":"created_manually","note":""}],"meta":{}}`,
+			wantEmail:       "empty-note@example.invalid",
+			wantName:        "Member without note",
+			wantType:        "created_manually",
+			wantInternal:    true,
+			wantDomainNull:  true,
+			wantEmailIsNull: false,
+			wantNoteNull:    true,
 		},
 	}
 
@@ -117,8 +133,8 @@ func TestProfileGroupMemberImportAndReadPreservesIdentityBranch(t *testing.T) {
 			if got.Name.ValueString() != test.wantName || got.Type.ValueString() != test.wantType || got.Internal.ValueBool() != test.wantInternal {
 				t.Fatal("refresh did not map computed member metadata")
 			}
-			if !got.Note.IsNull() {
-				t.Fatal("refresh changed the imported note")
+			if got.Note.IsNull() != test.wantNoteNull || got.Note.ValueString() != test.wantNote {
+				t.Fatal("refresh did not map the member note")
 			}
 		})
 	}
