@@ -68,6 +68,10 @@ func (r *managedURLResource) Create(ctx context.Context, req resource.CreateRequ
 	found := false
 	for _, item := range created {
 		if item.ID == id {
+			if item.URL == "" {
+				resp.Diagnostics.AddError("Unable to read created managed URL", "Mimecast did not return enough URL components to reconstruct the managed URL.")
+				return
+			}
 			plan.fromAPI(item)
 			found = true
 			break
@@ -92,6 +96,10 @@ func (r *managedURLResource) Read(ctx context.Context, req resource.ReadRequest,
 	}
 	for _, item := range items {
 		if item.ID == state.ID.ValueString() {
+			if item.URL == "" {
+				resp.Diagnostics.AddError("Unable to read managed URL", "Mimecast did not return enough URL components to reconstruct the managed URL.")
+				return
+			}
 			state.fromAPI(item)
 			resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 			return
