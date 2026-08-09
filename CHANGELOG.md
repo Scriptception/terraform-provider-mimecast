@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.2.9 - 2026-08-10
+
+- Preserved configured Address Alteration Set handles when Mimecast returns a
+  different opaque secure ID during policy reads.
+- Changed Address Alteration policy imports to use
+  `policy_id,address_alteration_set_id`, so both opaque handles enter state.
+
 ## 0.2.8 - 2026-08-10
 
 - Corrected unfiltered managed URL inventory reads to omit the filter object
