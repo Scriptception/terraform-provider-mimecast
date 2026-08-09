@@ -53,12 +53,12 @@ func (p *MimecastProvider) Schema(_ context.Context, _ provider.SchemaRequest, r
 			"base_url": schema.StringAttribute{
 				Description: "Base URL for Mimecast API 2.0. May also be set via MIMECAST_ADDRESS or MIMECAST_BASE_URL. Defaults to `https://api.services.mimecast.com`.",
 				Optional:    true,
-				Validators:  []validator.String{urlValidator{}},
+				Validators:  []validator.String{serviceURLValidator{}},
 			},
 			"token_url": schema.StringAttribute{
 				Description: "OAuth token endpoint. May also be set via MIMECAST_TOKEN_URL. When omitted, it is derived as `<base_url>/oauth/token`.",
 				Optional:    true,
-				Validators:  []validator.String{urlValidator{}},
+				Validators:  []validator.String{serviceURLValidator{}},
 			},
 			"client_id": schema.StringAttribute{
 				Description: "Mimecast API 2.0 client ID. May also be set via MIMECAST_CLIENT_ID.",

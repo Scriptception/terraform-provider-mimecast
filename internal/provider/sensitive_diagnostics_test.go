@@ -100,6 +100,54 @@ func TestSensitiveURLValidationDiagnosticsAreValueFree(t *testing.T) {
 	}
 }
 
+func TestServiceURLValidationRejectsRemoteHTTPWithoutValues(t *testing.T) {
+	ctx := context.Background()
+	var schemaResponse frameworkprovider.SchemaResponse
+	New("test")().Schema(ctx, frameworkprovider.SchemaRequest{}, &schemaResponse)
+	if schemaResponse.Diagnostics.HasError() {
+		t.Fatal(schemaResponse.Diagnostics)
+	}
+	secret := "diagnostic-secret-marker"
+	for _, name := range []string{"base_url", "token_url"} {
+		attribute, ok := schemaResponse.Schema.Attributes[name].(providerschema.StringAttribute)
+		if !ok || len(attribute.Validators) == 0 {
+			t.Fatalf("%s must be validated: %#v", name, attribute)
+		}
+		request := validator.StringRequest{
+			ConfigValue: types.StringValue("http://service-user:" + secret + "@api.example.test"),
+			Path:        path.Root(name),
+		}
+		var response validator.StringResponse
+		for _, validate := range attribute.Validators {
+			validate.ValidateString(ctx, request, &response)
+		}
+		if !response.Diagnostics.HasError() {
+			t.Fatalf("remote plaintext %s must produce an error", name)
+		}
+		assertDiagnosticsExclude(t, response.Diagnostics, secret)
+
+		response = validator.StringResponse{}
+		request.ConfigValue = types.StringValue("http://localhost:8080")
+		for _, validate := range attribute.Validators {
+			validate.ValidateString(ctx, request, &response)
+		}
+		if !response.Diagnostics.HasError() {
+			t.Fatalf("hostname-based plaintext %s must produce an error", name)
+		}
+
+		for _, allowed := range []string{"https://api.example.test", "http://127.0.0.1:8080", "http://[::1]:8080"} {
+			response = validator.StringResponse{}
+			request.ConfigValue = types.StringValue(allowed)
+			for _, validate := range attribute.Validators {
+				validate.ValidateString(ctx, request, &response)
+			}
+			if response.Diagnostics.HasError() {
+				t.Fatalf("allowed %s diagnostics: %v", name, response.Diagnostics)
+			}
+		}
+	}
+}
+
 func TestSensitiveEmailValidationDiagnosticsAreValueFree(t *testing.T) {
 	ctx := context.Background()
 	secret := "diagnostic-secret-marker"
