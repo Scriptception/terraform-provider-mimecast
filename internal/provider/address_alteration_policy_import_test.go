@@ -31,7 +31,7 @@ func TestAddressAlterationPolicyImportAndReadHydratesRequiredPolicy(t *testing.T
 			if len(body.Data) != 1 || body.Data[0]["id"] != "policy-1" {
 				t.Fatalf("import read filter = %#v", body.Data)
 			}
-			_, _ = w.Write([]byte(`{"data":[{"id":"policy-1","addressAlterationSetId":"set-1","policy":{"description":"Imported policy","enabled":true,"from":{"type":"everyone"},"to":{"type":"everyone"},"fromPart":"both","fromEternal":true,"toEternal":true}}]}`))
+			_, _ = w.Write([]byte(`{"data":[{"id":"rotated-secure-id","addressAlterationSetId":"set-1","policy":{"description":"Imported policy","enabled":true,"from":{"type":"everyone"},"to":{"type":"everyone"},"fromPart":"both","fromEternal":true,"toEternal":true}}]}`))
 		default:
 			t.Fatalf("unexpected path %s", request.URL.Path)
 		}

@@ -329,21 +329,26 @@ func (c *Client) GetAddressAlterationPolicy(ctx context.Context, id string) (Add
 	if err := c.DoRead(ctx, http.MethodPost, addressAlterationGetPolicy, nil, map[string]any{"data": []any{map[string]string{"id": id}}}, &out); err != nil {
 		return AddressAlterationPolicy{}, err
 	}
-	for _, item := range out.Data {
-		if item.ID == id || item.ID == "" && len(out.Data) == 1 {
-			item.ID = id
-			canonicalizeLegacyPolicy(&item.Policy)
-			return item, nil
-		}
+	switch len(out.Data) {
+	case 0:
+		return AddressAlterationPolicy{}, legacyNotFound(http.MethodPost, addressAlterationGetPolicy)
+	case 1:
+		item := out.Data[0]
+		// The filtered request identifies the policy. Mimecast can return a
+		// different secure ID for the same object, so preserve the requested ID.
+		item.ID = id
+		canonicalizeLegacyPolicy(&item.Policy)
+		return item, nil
+	default:
+		return AddressAlterationPolicy{}, fmt.Errorf("mimecast: address alteration policy lookup returned %d records; expected exactly one", len(out.Data))
 	}
-	return AddressAlterationPolicy{}, legacyNotFound(http.MethodPost, addressAlterationGetPolicy)
 }
 
 // ListAddressAlterationPolicies uses the documented omitted-id behaviour to
 // return all policies. This legacy endpoint has no pagination fields.
 func (c *Client) ListAddressAlterationPolicies(ctx context.Context) ([]AddressAlterationPolicy, error) {
 	var out LegacyEnvelope[AddressAlterationPolicy]
-	if err := c.DoRead(ctx, http.MethodPost, addressAlterationGetPolicy, nil, map[string]any{"data": []any{map[string]any{}}}, &out); err != nil {
+	if err := c.DoRead(ctx, http.MethodPost, addressAlterationGetPolicy, nil, nil, &out); err != nil {
 		return nil, err
 	}
 	for i := range out.Data {
