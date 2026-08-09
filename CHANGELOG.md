@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.2.4 - 2026-08-09
+
+- Normalised delivery-route authentication-mechanism reads by trimming
+  whitespace and discarding empty response placeholders.
+
 ## 0.2.3 - 2026-08-09
 
 - Prevented sensitive proxy credentials and email addresses from appearing in

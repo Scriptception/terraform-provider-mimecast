@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -175,6 +176,15 @@ func (m *deliveryRouteDefinitionModel) fromAPI(ctx context.Context, in client.De
 	m.Hostname = stringValue(in.Hostname)
 	m.Port = int64Value(in.Port)
 	m.AlternateRouteID = stringValue(in.AlternateRouteID)
+	authMechanisms, username, domain := deliveryRouteAuthenticationFromAPI(in)
+	m.Username = stringValue(username)
+	m.Domain = stringValue(domain)
+	var d diag.Diagnostics
+	m.AuthMechanisms, d = listFromStrings(ctx, authMechanisms)
+	diags.Append(d...)
+}
+
+func deliveryRouteAuthenticationFromAPI(in client.DeliveryRouteDefinition) ([]string, string, string) {
 	authMechanisms := in.AuthMechanisms
 	username := in.Username
 	domain := in.Domain
@@ -183,11 +193,18 @@ func (m *deliveryRouteDefinitionModel) fromAPI(ctx context.Context, in client.De
 		username = in.SMTPAuth.Username
 		domain = in.SMTPAuth.Domain
 	}
-	m.Username = stringValue(username)
-	m.Domain = stringValue(domain)
-	var d diag.Diagnostics
-	m.AuthMechanisms, d = listFromStrings(ctx, authMechanisms)
-	diags.Append(d...)
+
+	canonical := make([]string, 0, len(authMechanisms))
+	for _, mechanism := range authMechanisms {
+		if mechanism = strings.TrimSpace(mechanism); mechanism != "" {
+			canonical = append(canonical, mechanism)
+		}
+	}
+	if len(canonical) == 0 {
+		canonical = nil
+	}
+
+	return canonical, username, domain
 }
 
 type dnsOutboundDefinitionModel struct {
