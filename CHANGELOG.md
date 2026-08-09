@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Normalised Cloud Gateway outbound IP discovery across both object-entry and
+  string-array API 2.0 responses.
+
 ## 0.2.0 - 2026-08-08
 
 - Standardised on Mimecast API 2.0 and Terraform Plugin Framework protocol 6.

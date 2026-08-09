@@ -859,6 +859,25 @@ func TestExistingMiscClientLifecyclesAndPagination(t *testing.T) {
 	}
 }
 
+func TestGetOutboundIPAddressesAcceptsObjectEntries(t *testing.T) {
+	c, server := newFixtureClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/oauth/token" {
+			tokenFixture(w)
+			return
+		}
+		if r.Method != http.MethodGet || r.URL.Path != "/email/cloud-gateway/v1/outbound-ip-addresses" {
+			t.Fatalf("unexpected request %s %s", r.Method, r.URL.Path)
+		}
+		_, _ = w.Write([]byte(`{"outboundIpAddresses":[{"outboundIpAddress":"198.51.100.2"},{"outboundIpAddress":"192.0.2.1"}]}`))
+	}, nil)
+	defer server.Close()
+
+	addresses, err := c.GetOutboundIPAddresses(context.Background())
+	if err != nil || strings.Join(addresses, ",") != "192.0.2.1,198.51.100.2" {
+		t.Fatalf("addresses=%#v error=%v", addresses, err)
+	}
+}
+
 func assertCloudIntegratedWrite(t *testing.T, r *http.Request) {
 	t.Helper()
 	var raw map[string]json.RawMessage
