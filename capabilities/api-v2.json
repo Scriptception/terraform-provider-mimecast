@@ -3,11 +3,11 @@
   "api": {
     "version": "2.0",
     "catalogue_url": "https://developer.services.mimecast.com/portals/api/sites/mimecast-prod-apigee-developer/liveportal/apis",
-    "checked_on": "2026-08-08",
+    "checked_on": "2026-09-28",
     "product_count": 19,
-    "product_operation_count": 475,
-    "unique_operation_count": 371,
-    "operation_set_sha256": "b416c35443c17c179000c89a5a32dd43209796dc27285dcd7fd00e4b438e61d7",
+    "product_operation_count": 476,
+    "unique_operation_count": 372,
+    "operation_set_sha256": "69a022059785437a806869e53d47a96f088e542f70225c4debf374ce9b479561",
     "products": [
       {
         "id": "accountmanagement",
@@ -5843,6 +5843,31 @@
       "defer_reason": {
         "code": "message_operations_workflow",
         "detail": "Message, queue, sender, and file endpoints perform operational actions or return transient mail-flow data."
+      },
+      "release_blocking_gap": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/gateway/find-held-messages",
+      "products": [
+        "cloudgateway"
+      ],
+      "disposition": "excluded",
+      "reason": "Find Held Messages searches the current held-message queue by time, sender, recipient, hold reason, and policy information; results are transient messages for review or release/reject, not durable configuration.",
+      "category": "operational_data",
+      "pagination": "not_paginated",
+      "permission": {
+        "api_products": [
+          "cloudgateway"
+        ],
+        "documented_role_permissions": [
+          "Account | Monitoring | Held | Read"
+        ],
+        "source": "official_contract"
+      },
+      "defer_reason": {
+        "code": "message_operations_workflow",
+        "detail": "This search returns currently held mail and secure message IDs for release or rejection; queue membership changes with mail flow and cannot have Terraform resource state or drift."
       },
       "release_blocking_gap": false
     },

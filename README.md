@@ -19,7 +19,7 @@ threat-reporting subscriptions. Its 36 typed data sources expose account,
 domain, user, role, connector, journaling, policy, DMARC, integration, and
 subscription inventory without placing raw API responses in state.
 
-[`docs/api-coverage.md`](./docs/api-coverage.md) summarises all 371 unique
+[`docs/api-coverage.md`](./docs/api-coverage.md) summarises all 372 unique
 operations in the current public API catalogue. The checked operation ledger is
 [`capabilities/api-v2.json`](./capabilities/api-v2.json). Declarative operations
 with a complete safe lifecycle but no implemented typed surface are listed in
@@ -31,7 +31,7 @@ with a complete safe lifecycle but no implemented typed surface are listed in
 - A Mimecast API 2.0 application using OAuth 2.0 client credentials.
 - The API products and role permissions required by the objects being read or
   managed.
-- Go 1.25.12 when building from source.
+- Go 1.25.13 when building from source.
 
 API product choices for a Mimecast Integrations Hub application cannot be
 changed after creation. Confirm the required products before creating a
