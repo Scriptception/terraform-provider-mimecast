@@ -1,8 +1,8 @@
 # Mimecast API 2.0 Capability Coverage
 
-Checked against the [official Mimecast API catalogue](https://developer.services.mimecast.com/portals/api/sites/mimecast-prod-apigee-developer/liveportal/apis) on 2026-08-08. The catalogue contains **19 products**, **475 product operation entries**, and **371 unique method and path operations**. Product entries are higher because 104 operations appear in more than one product.
+Checked against the [official Mimecast API catalogue](https://developer.services.mimecast.com/portals/api/sites/mimecast-prod-apigee-developer/liveportal/apis) on 2026-11-01. The catalogue contains **20 products**, **478 product operation entries**, and **373 unique method and path operations**. Product entries are higher because 105 operations appear in more than one product.
 
-Every operation is classified in [`capabilities/api-v2.json`](../capabilities/api-v2.json): **152 have an implemented typed Terraform surface**, **219 are excluded**, and **0 declarative gaps block release**.
+Every operation is classified in [`capabilities/api-v2.json`](../capabilities/api-v2.json): **153 have an implemented typed Terraform surface**, **220 are excluded**, and **0 declarative gaps block release**.
 
 ## Coverage Definition
 
@@ -19,11 +19,12 @@ The live checker fails on new, removed, moved, unknown, or unclassified operatio
 | Audit Events (`auditevents`) | 0 | 7 | 0 | 7 |
 | Awareness Training (`awarenesstraining`) | 0 | 10 | 0 | 10 |
 | Email Security (`cloud-integrated`) | 5 | 2 | 0 | 7 |
-| Email Security Cloud Gateway (`cloudgateway`) | 9 | 19 | 0 | 28 |
+| Email Security Cloud Gateway (`cloudgateway`) | 9 | 21 | 0 | 30 |
 | Connectors (`connector`) | 2 | 3 | 0 | 5 |
+| Directory Management (`directory`) | 1 | 0 | 0 | 1 |
 | DMARC Analyzer (`dmarcanalyzer`) | 45 | 40 | 0 | 85 |
-| Domain Management (`domainmanagement`) | 6 | 17 | 0 | 23 |
-| Email Security Onboarding (`emailsecurityonboarding`) | 72 | 33 | 0 | 105 |
+| Domain Management (`domainmanagement`) | 6 | 16 | 0 | 22 |
+| Email Security Onboarding (`emailsecurityonboarding`) | 72 | 34 | 0 | 106 |
 | Human Risk (`human-risk`) | 0 | 7 | 0 | 7 |
 | Integration Management (`integrationmanagement`) | 0 | 8 | 0 | 8 |
 | Policy Management (`policymanagement`) | 55 | 9 | 0 | 64 |
@@ -47,6 +48,7 @@ Counts include cross-listed operations in every applicable product.
 | `data_source.mimecast_address_alteration_sets` | 1 |
 | `data_source.mimecast_anti_spoofing_bypass_policies` | 1 |
 | `data_source.mimecast_anti_spoofing_policies` | 1 |
+| `data_source.mimecast_attribute_types` | 1 |
 | `data_source.mimecast_blocked_sender_policies` | 1 |
 | `data_source.mimecast_cloud_integrated_default_policy` | 1 |
 | `data_source.mimecast_connectors` | 2 |
@@ -120,7 +122,7 @@ Counts include cross-listed operations in every applicable product.
 | `interactive_connector_consent` | 3 |
 | `interactive_integration_consent` | 8 |
 | `legacy_policy_superseded` | 6 |
-| `message_operations_workflow` | 12 |
+| `message_operations_workflow` | 13 |
 | `no_safe_delete_contract` | 7 |
 | `no_safe_read_contract` | 2 |
 | `operation_has_no_durable_state` | 23 |

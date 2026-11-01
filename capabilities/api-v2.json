@@ -3,11 +3,11 @@
   "api": {
     "version": "2.0",
     "catalogue_url": "https://developer.services.mimecast.com/portals/api/sites/mimecast-prod-apigee-developer/liveportal/apis",
-    "checked_on": "2026-08-08",
-    "product_count": 19,
-    "product_operation_count": 475,
-    "unique_operation_count": 371,
-    "operation_set_sha256": "b416c35443c17c179000c89a5a32dd43209796dc27285dcd7fd00e4b438e61d7",
+    "checked_on": "2026-11-01",
+    "product_count": 20,
+    "product_operation_count": 478,
+    "unique_operation_count": 373,
+    "operation_set_sha256": "1e0ed80617427258325ac5f375e3cd89b5f80fd5f53bde2b579501f656360cf9",
     "products": [
       {
         "id": "accountmanagement",
@@ -36,6 +36,10 @@
       {
         "id": "connector",
         "title": "Connectors"
+      },
+      {
+        "id": "directory",
+        "title": "Directory Management"
       },
       {
         "id": "dmarcanalyzer",
@@ -1612,6 +1616,32 @@
       },
       "contract_status": "official_contract_checked",
       "test_status": "synthetic_lifecycle",
+      "release_blocking_gap": false
+    },
+    {
+      "method": "GET",
+      "path": "/directory/v1/attributeTypes",
+      "products": [
+        "directory"
+      ],
+      "disposition": "terraform",
+      "terraform_surfaces": [
+        "data_source.mimecast_attribute_types"
+      ],
+      "reason": "Typed, paginated read-only discovery of local and directory-linked attribute definitions; address attribute values remain outside this data source.",
+      "category": "configuration_discovery",
+      "pagination": "cursor",
+      "permission": {
+        "api_products": [
+          "directory"
+        ],
+        "documented_role_permissions": [
+          "Directories | Attributes | Read"
+        ],
+        "source": "official_contract"
+      },
+      "contract_status": "official_contract_checked",
+      "test_status": "synthetic_contract",
       "release_blocking_gap": false
     },
     {
@@ -4230,7 +4260,8 @@
       "method": "PATCH",
       "path": "/email/cloud-gateway/v1/protection-mode",
       "products": [
-        "domainmanagement"
+        "cloudgateway",
+        "emailsecurityonboarding"
       ],
       "disposition": "excluded",
       "reason": "Account, licence, role, statistic, or global onboarding control is read-only operational context or unsafe as a Terraform lifecycle.",
@@ -4238,7 +4269,8 @@
       "pagination": "not_paginated",
       "permission": {
         "api_products": [
-          "domainmanagement"
+          "cloudgateway",
+          "emailsecurityonboarding"
         ],
         "documented_role_permissions": [
           "Account | Settings | Edit"
@@ -5843,6 +5875,31 @@
       "defer_reason": {
         "code": "message_operations_workflow",
         "detail": "Message, queue, sender, and file endpoints perform operational actions or return transient mail-flow data."
+      },
+      "release_blocking_gap": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/gateway/find-held-messages",
+      "products": [
+        "cloudgateway"
+      ],
+      "disposition": "excluded",
+      "reason": "Find Held Messages searches the current held-message queue by time, sender, recipient, hold reason, and policy information; results are transient messages for review or release/reject, not durable configuration.",
+      "category": "operational_data",
+      "pagination": "not_paginated",
+      "permission": {
+        "api_products": [
+          "cloudgateway"
+        ],
+        "documented_role_permissions": [
+          "Account | Monitoring | Held | Read"
+        ],
+        "source": "official_contract"
+      },
+      "defer_reason": {
+        "code": "message_operations_workflow",
+        "detail": "This search returns currently held mail and secure message IDs for release or rejection; queue membership changes with mail flow and cannot have Terraform resource state or drift."
       },
       "release_blocking_gap": false
     },
