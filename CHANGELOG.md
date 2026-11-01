@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add the read-only `mimecast_attribute_types` data source for typed, paginated local and directory-linked attribute definitions.
+- Update the Go toolchain and HTTP/2 dependencies to address current vulnerability findings.
+
 ## 0.2.13 - 2026-08-10
 
 - Treated filtered managed URL reads as an optimisation and fell back to the

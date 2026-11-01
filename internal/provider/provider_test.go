@@ -30,8 +30,8 @@ func TestProviderSurfaces(t *testing.T) {
 	if got := len(p.Resources(context.Background())); got != 31 {
 		t.Fatalf("resources = %d, want 31 safe lifecycle resources", got)
 	}
-	if got := len(p.DataSources(context.Background())); got != 36 {
-		t.Fatalf("data sources = %d, want 36 typed inventory surfaces", got)
+	if got := len(p.DataSources(context.Background())); got != 37 {
+		t.Fatalf("data sources = %d, want 37 typed inventory surfaces", got)
 	}
 }
 

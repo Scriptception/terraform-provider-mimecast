@@ -210,6 +210,7 @@ func (p *MimecastProvider) DataSources(context.Context) []func() datasource.Data
 		NewProfileGroupMembersDataSource,
 		NewUsersDataSource,
 		NewRolesDataSource,
+		NewAttributeTypesDataSource,
 		NewGreylistingPoliciesDataSource,
 		NewDeliveryRoutePoliciesDataSource,
 		NewAntiSpoofingPoliciesDataSource,
